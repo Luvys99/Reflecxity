@@ -1,0 +1,13 @@
+{
+    "model_author": "Author Name",
+    "model_version": "1.0",
+    "training_data": {
+      "dataset_name": "Sample Dataset",
+      "dataset_size": 10000
+    },
+    "parameters": {
+      "learning_rate": 0.001,
+      "batch_size": 32
+    }
+  }
+  

@@ -1,0 +1,31 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp">
+
+    <ImageView
+        android:id="@+id/imageView5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:maxWidth="600dp"
+        android:maxHeight="1200dp"
+        android:adjustViewBounds="true"
+        app:srcCompat="@drawable/guide_screen2" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:fontFamily="@font/pretendard_light"
+        android:text="누구나 손쉽게 간단한 방법으로 사용하실 수 있습니다."
+        android:textAlignment="center"
+        android:textColor="@color/grey900"
+        android:textSize="20sp" />
+</LinearLayout>

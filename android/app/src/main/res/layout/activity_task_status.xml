@@ -1,0 +1,192 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <ImageView
+        android:id="@+id/status_icon"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:srcCompat="@drawable/engineering" />
+
+    <TextView
+        android:id="@+id/info_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/pretendard_bold"
+        android:text="서비스 준비 중..."
+        android:textColor="@color/grey900"
+        android:textSize="32sp" />
+
+    <TextView
+        android:id="@+id/info_txt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:gravity="center"
+        android:text="모델을 생성하는 데에 평균적으로 1~2시간 소요됩니다...\n앱을 종료하여도 계속 진행됩니다."
+        android:textColor="@color/grey900"
+        android:textSize="18sp" />
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/user_creation_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="5dp"
+            android:fontFamily="@font/pretendard_light"
+            android:text="사용자 생성 상태: 생성 중"
+            android:textColor="@color/grey900"
+            android:textSize="20sp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar_creationStatus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/green_txtcolor"
+            android:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/imageView_creationStatus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:visibility="gone"
+            app:srcCompat="@drawable/check_circle" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/file_upload_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="5dp"
+            android:fontFamily="@font/pretendard_light"
+            android:text="파일 업로드 상태: 업로드 중"
+            android:textColor="@color/grey900"
+            android:textSize="20sp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar_uploadStatus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/green_txtcolor"
+            android:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/imageView_uploadStatus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:visibility="gone"
+            app:srcCompat="@drawable/check_circle" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/model_creation_request"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="5dp"
+            android:fontFamily="@font/pretendard_light"
+            android:text="모델 생성 요청: 요청 중"
+            android:textColor="@color/grey900"
+            android:textSize="20sp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar_modelRequest"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/green_txtcolor"
+            android:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/imageView_modelRequest"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:visibility="gone"
+            app:srcCompat="@drawable/check_circle" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/model_creation_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="5dp"
+            android:fontFamily="@font/pretendard_light"
+            android:text="모델 생성 상태: 생성 중"
+            android:textColor="@color/grey900"
+            android:textSize="20sp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar_modelStatus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/green_txtcolor"
+            android:visibility="visible" />
+
+        <ImageView
+            android:id="@+id/imageView_modelStatus"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:visibility="gone"
+            app:srcCompat="@drawable/check_circle" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/home_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:backgroundTint="@color/btn_green"
+            android:text="처음으로"
+            android:textColor="@color/grey900"
+            android:visibility="gone"
+            app:cornerRadius="100dp" />
+
+        <Button
+            android:id="@+id/next_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:backgroundTint="@color/btn_green"
+            android:text="다음으로"
+            android:textColor="@color/grey900"
+            android:visibility="gone"
+            app:cornerRadius="100dp" />
+    </LinearLayout>
+
+</LinearLayout>

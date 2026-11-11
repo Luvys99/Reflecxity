@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#181818</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="grey900">#F9F9F9</color>
+    <color name="grey800">#DADADA</color>
+    <color name="grey700">#C8C8C8</color>
+    <color name="grey600">#B4B4B4</color>
+    <color name="grey500">#999999</color>
+    <color name="grey400">#838383</color>
+    <color name="grey300">#424242</color>
+    <color name="grey200">#2C2C2C</color>
+    <color name="grey100">#232323</color>
+    <color name="grey50">#121212</color>
+    <color name="red">#CE4C4C</color>
+    <color name="red_txtcolor">#FF4646</color>
+    <color name="green">#239C62</color>
+    <color name="green_txtcolor">#89A879</color>
+    <color name="status_green">#9ac089</color>
+    <color name="btn_green">#262E23</color>
+    <color name="edittxt_green">#1C1F1B</color>
+    <color name="ripple_color">#5a6057</color>
+    <color name="transparent">#00FFFFFF</color>
+</resources>

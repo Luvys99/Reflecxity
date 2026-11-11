@@ -1,0 +1,53 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp"
+    android:background="@color/background">
+
+    <ImageView
+        android:id="@+id/imageView2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:srcCompat="@drawable/warning" />
+
+    <TextView
+        android:id="@+id/textView5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/pretendard_bold"
+        android:text="주의!"
+        android:textColor="@color/red_txtcolor"
+        android:textSize="34sp" />
+
+    <TextView
+        android:id="@+id/textView4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="20dp"
+        android:text="@string/retrain_txt"
+        android:textColor="@color/grey900"
+        android:textAlignment="center"
+        android:textSize="20sp" />
+
+    <Button
+        android:id="@+id/button_reset"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="@color/red"
+        android:text="초기화"
+        android:textColor="@color/grey900"
+        app:cornerRadius="100dp" />
+
+    <TextView
+        android:id="@+id/remaining_time_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="00분 00초 이후에 초기화 버튼을 사용할 수 있습니다."
+        android:textColor="@color/grey600"
+        android:paddingStart="16dp"
+        android:layout_marginTop="8dp" />
+</LinearLayout>

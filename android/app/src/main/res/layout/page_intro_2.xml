@@ -1,0 +1,32 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp">
+
+    <ImageView
+        android:id="@+id/imageView4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:maxWidth="600dp"
+        android:maxHeight="1200dp"
+        android:adjustViewBounds="true"
+        app:srcCompat="@drawable/guide_screen1" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:fontFamily="@font/pretendard_light"
+        android:lineSpacingExtra="5dp"
+        android:text="5~10분의 녹음을 한 후, 약 1~2시간이면 외국어를 유창하게 말하는 내 목소리를 직접 들을 수 있습니다."
+        android:textAlignment="center"
+        android:textColor="@color/grey900"
+        android:textSize="20sp" />
+</LinearLayout>
