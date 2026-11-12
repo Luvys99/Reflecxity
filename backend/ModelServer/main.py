@@ -509,6 +509,9 @@ async def synthesize_tts(background_tasks_tts: BackgroundTasks, tts_data: dict =
 
 async def synthesize_tts_async(pth_path, index_path, tts_text, user_uuid, pitch):
     try:
+        # TTS 임시 파일을 저장할 폴더가 없으면 만든다 (git은 빈 폴더를 저장하지 않아 새로 받으면 없다)
+        os.makedirs(os.path.join(".", "temptts"), exist_ok=True)
+
         # TTS 명령어 실행
         tts_command = [
             sys.executable,
