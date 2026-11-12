@@ -1987,7 +1987,7 @@ def parse_arguments():
     )
     extract_parser.add_argument(
         "--gpu",
-        type=int,
+        type=str,  # "0" 같은 GPU 번호 또는 "-"(CPU)를 받는다. int면 기본값 "-"도 받을 수 없다
         help="GPU device to use for feature extraction (optional).",
         default="-",
     )

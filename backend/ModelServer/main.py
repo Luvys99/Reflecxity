@@ -1,5 +1,6 @@
 import os
 import sys
+import torch
 import uuid
 import subprocess
 import librosa
@@ -305,7 +306,7 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
         "--model_name", model_name,
         "--rvc_version", "v2",
         "--sample_rate", sample_rate,
-        "--gpu", "0",
+        "--gpu", "0" if torch.cuda.is_available() else "-",  # CUDA가 없으면(Mac 등) CPU로 추출
         "--cpu_cores", str(cpu_cores),
         "--pitch_guidance", "True",
         "--f0_method", "rmvpe"
