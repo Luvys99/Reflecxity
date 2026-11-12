@@ -1,0 +1,22 @@
+# OS / IDE
+.DS_Store
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+backend/ModelServer/env/
+
+# Model Server 실행 중 생기는 파일
+backend/ModelServer/user/
+backend/ModelServer/temptts/
+backend/ModelServer/logs/*
+!backend/ModelServer/logs/mute/
+
+# 내려받는 모델 파일 (용량이 커서 저장소에 넣지 않음)
+backend/ModelServer/uvrmodel/
+backend/ModelServer/rvc/models/**/*.pt
+backend/ModelServer/rvc/models/**/*.pth
+backend/ModelServer/rvc/models/**/*.bin
+backend/ModelServer/rvc/models/**/*.onnx

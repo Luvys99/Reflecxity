@@ -1,4 +1,5 @@
 import os
+import sys
 import uuid
 import subprocess
 import librosa
@@ -254,7 +255,7 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
     # --- 1. Uvr 실행 ---
     print(voice_file)
     uvr_command = [
-        "env\\python.exe",
+        sys.executable,
         "uvr_cli.py",
         "--audio_file", voice_file,
         "--model_filename", "model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt",
@@ -286,7 +287,7 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
 
     # --- 2. Preprocess 실행 ---
     preprocess_command = [
-        "env\\python.exe",
+        sys.executable,
         "rvc_cli.py",
         "preprocess",
         "--model_name", model_name,
@@ -298,7 +299,7 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
 
     # --- 3. Extract 실행 ---
     extract_command = [
-        "env\\python.exe",
+        sys.executable,
         "rvc_cli.py",
         "extract",
         "--model_name", model_name,
@@ -321,7 +322,7 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
         raise HTTPException(status_code=500, detail="모델 생성 실패: sliced_audios_16k 폴더에 파일이 10개 이하입니다.")
     # --- 4. Train 실행 ---
     train_command = [
-        "env\\python.exe",
+        sys.executable,
         "rvc_cli.py",
         "train",
         "--model_name", model_name,
@@ -367,7 +368,7 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
     # --- 5. autopitch 실행 ---
     '''
     pitch_command = [
-        "env\\python.exe",
+        sys.executable,
         "rvc_cli.py",
         "infer",
         "--input_path", "pitchtest/temp.ogg",  # 테스트 음성 파일 경로
@@ -509,7 +510,7 @@ async def synthesize_tts_async(pth_path, index_path, tts_text, user_uuid, pitch)
     try:
         # TTS 명령어 실행
         tts_command = [
-            "env\\python",
+            sys.executable,
             "rvc_cli.py",
             "tts",
             "--tts_text",
@@ -642,7 +643,7 @@ async def find_optimal_pitch(dataset_path, target_file, model_name, pth_path, in
     for i in range(0, 24):  # 피치 값 범위 설정
         print(f"피치 비교중 {i}")
         pitch_command = [
-            "env\\python.exe",
+            sys.executable,
             "rvc_cli.py",
             "infer",
             "--input_path", "pitchtest/temp.ogg", 
