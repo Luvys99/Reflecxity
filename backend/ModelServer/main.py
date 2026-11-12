@@ -1,4 +1,9 @@
 import os
+
+# torch와 faiss가 각자 OpenMP를 들고 와서 Mac에서 RVC 변환이 멈추는 문제를 피한다.
+# torch를 import하기 전에 설정해야 하고, 서버가 실행하는 하위 프로세스(rvc_cli.py 등)도 이 값을 물려받는다.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
 import sys
 import torch
 import uuid
