@@ -46,7 +46,7 @@ certifi>=2023.07.22; sys_platform == 'darwin'
 antlr4-python3-runtime==4.8; sys_platform == 'darwin'
 ffmpy==0.3.1
 tensorboardX
-edge-tts==6.1.9
+edge-tts==7.3.1
 pypresence
 beautifulsoup4
 flask
