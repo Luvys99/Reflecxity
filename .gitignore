@@ -24,3 +24,6 @@ backend/ModelServer/rvc/models/**/*.onnx
 # Windows에서 prerequisites가 받는 실행 파일
 backend/ModelServer/ffmpeg.exe
 backend/ModelServer/ffprobe.exe
+
+# Main Server 로컬 설정 (DB 비밀번호 등)
+backend/MainServer/.env
