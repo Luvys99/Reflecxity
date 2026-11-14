@@ -65,7 +65,7 @@ exit /b 0
 :install_dependencies
 echo Installing dependencies...
 call "%MINICONDA_DIR%\condabin\conda.bat" activate "%ENV_DIR%" || goto :error
-pip install --upgrade setuptools || goto :error
+pip install "setuptools<70" || goto :error
 pip install -r "%INSTALL_DIR%\requirements.txt" || goto :error
 pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --upgrade --index-url https://download.pytorch.org/whl/cu121 || goto :error
 call "%MINICONDA_DIR%\condabin\conda.bat" deactivate
