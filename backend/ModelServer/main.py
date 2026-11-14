@@ -28,12 +28,22 @@ status_manager = StatusManager()
 
 app = FastAPI()
 
-@app.get("/online")
+@app.get(
+    "/online",
+    tags=["상태"],
+    summary="서버 상태 확인",
+    description="서버가 떠 있으면 `{\"status\": \"online\"}`.",
+)
 async def check_online():
     return {"status": "online"}
 
 # 파일 저장 기능 추가
-@app.post("/user/{user_uuid}/upload")
+@app.post(
+    "/user/{user_uuid}/upload",
+    tags=["녹음 파일"],
+    summary="녹음 업로드",
+    description="`user/{user_uuid}/raw/`에 그대로 저장한다.",
+)
 async def upload_file(user_uuid: str, file: UploadFile = File(...)):
     try:
         # 파일 저장 (user_uuid 폴더에 저장)
@@ -49,7 +59,12 @@ async def upload_file(user_uuid: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"파일 저장 중 오류 발생: {e}")
 
 # 파일 검색 기능 추가
-@app.get("/user/{user_uuid}/files")
+@app.get(
+    "/user/{user_uuid}/files",
+    tags=["녹음 파일"],
+    summary="업로드한 파일 목록",
+    description="`user/{user_uuid}/raw/`의 파일 이름 목록.",
+)
 def get_user_files(user_uuid: str):
     try:
         user_folder = os.path.join(".", "user", user_uuid, "raw")
@@ -61,7 +76,12 @@ def get_user_files(user_uuid: str):
         raise HTTPException(status_code=500, detail=f"파일 목록 조회 중 오류 발생: {e}")
 
 # 파일 삭제 기능 추가
-@app.delete("/user/{user_uuid}/raw/{filename}")
+@app.delete(
+    "/user/{user_uuid}/raw/{filename}",
+    tags=["녹음 파일"],
+    summary="업로드한 파일 삭제",
+    description="`user/{user_uuid}/raw/{filename}`을 지운다.",
+)
 async def delete_file(user_uuid: str, filename: str):
     try:
         file_path = os.path.join(".", "user", user_uuid, "raw", filename)
@@ -75,7 +95,12 @@ async def delete_file(user_uuid: str, filename: str):
         raise HTTPException(status_code=500, detail=f"파일 삭제 중 오류 발생: {e}")
 
 # 파일 다운로드 기능 추가 
-@app.get("/user/{user_uuid}/raw/{filename}")
+@app.get(
+    "/user/{user_uuid}/raw/{filename}",
+    tags=["녹음 파일"],
+    summary="파일 받기",
+    description="주소에 `raw`가 있지만 실제로는 `user/{user_uuid}/{filename}`(raw 폴더가 아님)을 내려준다. TTS 결과 `convert.wav`를 받을 때 쓴다.",
+)
 async def download_file(user_uuid: str, filename: str):
     try:
         file_path = os.path.join(".", "user", user_uuid, filename)
@@ -92,7 +117,12 @@ async def download_file(user_uuid: str, filename: str):
         raise HTTPException(status_code=500, detail=f"파일 다운로드 중 오류 발생: {e}")
 
 # 사용자 삭제 기능 추가 (폴더 존재 여부 판단 개선)
-@app.delete("/user/{user_uuid}")
+@app.delete(
+    "/user/{user_uuid}",
+    tags=["사용자"],
+    summary="사용자 폴더 삭제",
+    description="`user/{user_uuid}/`(녹음, TTS 결과)와 `logs/{user_uuid}/`(학습 결과, 모델)를 지운다.",
+)
 def delete_user(user_uuid: str):
     try:
         # 사용자 폴더 경로
@@ -124,7 +154,12 @@ def delete_user(user_uuid: str):
         raise HTTPException(status_code=500, detail=f"사용자 삭제 중 오류 발생: {e}")
 
 # 모델 파일 존재 확인 API 추가
-@app.get("/user/{user_uuid}/modelcheck")
+@app.get(
+    "/user/{user_uuid}/modelcheck",
+    tags=["학습"],
+    summary="학습 완료 확인",
+    description="`logs/{user_uuid}/`에 `fail` 파일이 있으면 \"모델 생성 실패\", `pitch.txt`가 있으면 \"모델 파일 존재\", 그 외는 전부 \"모델 파일 없음\". `fail`은 잘린 조각이 10개 이하일 때만 생긴다 (#11).",
+)
 def check_model_files(user_uuid: str):
     try:
         model_dir = os.path.join(".", "logs", user_uuid)
@@ -189,7 +224,12 @@ async def combine_audio(model_name, dataset_path, voice_file_name):
 
 
 # 모델 생성 요청 처리 함수 (비동기 처리 추가)
-@app.post("/models")
+@app.post(
+    "/models",
+    tags=["학습"],
+    summary="학습 시작",
+    description="백그라운드로 학습 파이프라인을 실행하고 바로 응답한다: 녹음 합치기 → UVR(잡음 제거, `raw/`에 .ogg가 있으면 건너뜀) → preprocess(자르기) → extract(음높이·음색) → train(2 epoch) → index → pitch 찾기(`pitch.txt`). 각 단계는 `rvc_cli.py` / `uvr_cli.py`를 하위 프로세스로 실행한다.",
+)
 async def create_model(background_tasks_model: BackgroundTasks, model_data: dict = Body(...)):  # 인수 순서 변경
     try:
         # 요청 데이터에서 필요한 정보 추출 (model_name 제외)
@@ -451,13 +491,23 @@ async def run_command_async(command, model_id, step_name):
 
 
 # 상태 확인 api
-@app.get("/user/{user_uuid}/status")
+@app.get(
+    "/user/{user_uuid}/status",
+    tags=["TTS"],
+    summary="TTS 상태",
+    description="`user/{user_uuid}/status.json`의 TTS 상태: idle / progress / success / fail (`status.py`).",
+)
 def get_user_status(user_uuid: str):
     status = status_manager.get_status(user_uuid)
     return status
 
 # TTS 실행 함수
-@app.post("/tts")
+@app.post(
+    "/tts",
+    tags=["TTS"],
+    summary="TTS (텍스트 → 내 목소리)",
+    description="상태를 progress로 바꾸고 백그라운드로 실행한 뒤 바로 응답한다: edge-tts로 영어 기계 음성(`temptts/temp.ogg`) → 학습한 모델(.pth, .index)로 RVC 변환 → `user/{user_uuid}/convert.wav`. 끝나면 success, 에러면 fail.",
+)
 async def synthesize_tts(background_tasks_tts: BackgroundTasks, tts_data: dict = Body(...)):
     try:
         user_uuid = tts_data.get("user_uuid")
