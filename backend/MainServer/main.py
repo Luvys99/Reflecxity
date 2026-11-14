@@ -51,7 +51,10 @@ CHUNK_SIZE = 1024 * 1024  # 1MB
 BASE_DIR = os.getcwd()
 config['FILE_PATH'] = {'base_dir': BASE_DIR}
 
-model_queue = asyncio.Queue()
+# 대기열은 서버의 이벤트 루프 안에서 만든다 (아래 startup). Python 3.9에서는 asyncio.Queue가
+# 만들어질 때의 루프에 묶여서, 서버 시작 전에 만들면 대기열이 빈 뒤 get()에서 RuntimeError가 나고
+# 대기열 처리 작업이 죽는다 (#11)
+model_queue = None
 model_tasks = {}
 model_queue_positions = []
 
@@ -59,6 +62,11 @@ db_manager = DBManager(DB_CONFIG)
 db_manager.create_table()
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def create_model_queue():
+    global model_queue
+    model_queue = asyncio.Queue()
 file_handler = FileHandler(DB_CONFIG, ALLOWED_EXTENSIONS, config)
 
 origins = config.get('CORS', 'origins').split(',')
@@ -275,7 +283,8 @@ async def create_user_model(
         model_queue_positions.append(user_uuid)
         logging.info(f"모델 생성 요청이 대기열에 추가됨: {user_uuid}")
 
-        if 'queue_processor' not in model_tasks:
+        # 처리 작업이 없거나 (예상 못 한 에러로) 끝나 있으면 다시 시작한다
+        if 'queue_processor' not in model_tasks or model_tasks['queue_processor'].done():
             model_tasks['queue_processor'] = asyncio.create_task(process_model_queue())
 
         return {"message": "모델 생성 요청이 대기열에 추가되었습니다.", "model_id": user_uuid}
