@@ -161,6 +161,10 @@ def delete_user(user_uuid: str):
     description="학습 상태(`user/{user_uuid}/status.json`의 `train`)가 `fail`이거나 `logs/{user_uuid}/fail` 파일이 있으면 \"모델 생성 실패\", `pitch.txt`가 있으면 \"모델 파일 존재\", 그 외는 \"모델 파일 없음\"(진행 중). 실패 원인은 `GET /user/{user_uuid}/status`의 `train_error`.",
 )
 def check_model_files(user_uuid: str):
+    # 학습 상태가 fail이면 실패 (run_training이 어떤 에러든 기록한다)
+    # UVR 단계에서 실패하면 logs 폴더가 아직 없으므로, 폴더를 읽기 전에 맨 앞에서 본다
+    if status_manager.get_status(user_uuid).get("train") == "fail":
+        return {"message": "모델 생성 실패"}
     try:
         model_dir = os.path.join(".", "logs", user_uuid)
         pitch = [f for f in os.listdir(model_dir) if "pitch.txt" in f]
@@ -175,9 +179,6 @@ def check_model_files(user_uuid: str):
             if f.startswith("added_") and f.endswith(".index")
         ]
         '''
-        # 학습 상태가 fail이면 실패 (run_training이 어떤 에러든 기록한다)
-        if status_manager.get_status(user_uuid).get("train") == "fail":
-            return {"message": "모델 생성 실패"}
         # fail 파일 존재 여부 확인
         if os.path.exists(fail_file_path):
             return {"message": "모델 생성 실패"}
