@@ -72,8 +72,10 @@ app.add_middleware(
 
 MODEL_SERVER_API_URL = config.get('MODEL_SERVER', 'api_url')
 DEFAULT_PITCH = int(config.get('TTS', 'default_pitch'))
-MODEL_GENERATION_TIMEOUT = 21600
-CHECK_INTERVAL = 60
+# 학습 시간 초과와 확인 간격 (초). 측정할 때는 .env로 짧게 바꾼다
+# 기본 30분: 10분 녹음 학습이 약 4분 20초 (Windows RTX 3060, 2026-11-14 측정). 원래 값은 6시간이었다 (#11)
+MODEL_GENERATION_TIMEOUT = int(os.environ.get("MODEL_GENERATION_TIMEOUT", 1800))
+CHECK_INTERVAL = int(os.environ.get("MODEL_CHECK_INTERVAL", 60))
 
 # 요청별 로깅 미들웨어
 @app.middleware("http")
@@ -349,9 +351,7 @@ async def process_model_queue():
             while True:
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= MODEL_GENERATION_TIMEOUT:
-                    logging.error(f"모델 생성 시간 초과: {user_uuid}")
-                    model_queue.task_done()
-                    del model_tasks[user_uuid]
+                    # task_done()과 대기열 정리는 finally가 한다
                     raise TimeoutError(f"모델 생성 시간 초과: {user_uuid}")
 
                 check_response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/modelcheck", timeout=CHECK_INTERVAL)
@@ -368,17 +368,15 @@ async def process_model_queue():
                 await asyncio.sleep(CHECK_INTERVAL)
                 logging.info(f"모델 생성 상태 확인 다시 시도: {user_uuid}")
 
+        # 한 사용자의 실패로 대기열 처리 작업이 끝나지 않도록, 로그만 남기고 다음 사용자로 넘어간다 (#11)
         except requests.exceptions.RequestException as e:
-            logging.error(f"모델 생성 요청 중 오류 발생: {e}")
-            raise
+            logging.error(f"모델 생성 요청 중 오류 발생: {user_uuid}: {e}")
 
         except TimeoutError as e:
             logging.error(f"모델 생성 시간 초과: {e}")
-            raise
 
         except Exception as e:
-            logging.error(f"모델 생성 중 오류 발생: {e}")
-            raise
+            logging.error(f"모델 생성 중 오류 발생: {user_uuid}: {type(e).__name__}: {e}")
 
         finally:
             model_queue.task_done()
