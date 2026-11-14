@@ -86,11 +86,21 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.get("/")
+@app.get(
+    "/",
+    tags=["상태"],
+    summary="기본 응답",
+    description="서버가 떠 있는지 가장 간단히 확인한다.",
+)
 def read_root():
     return {"message": "파일 업로드 및 관리 시스템 API"}
 
-@app.post("/user")
+@app.post(
+    "/user",
+    tags=["사용자"],
+    summary="사용자 생성",
+    description="UUID를 발급하고 DB `users` 테이블에 저장한다. 로그인이 없어서 이 UUID가 사용자 신분증 역할을 한다. Model Server는 부르지 않는다.",
+)
 def create_user():
     user_uuid = generate_uuid()
     db_manager.save_user_metadata(user_uuid)
@@ -103,7 +113,12 @@ def create_user():
         logging.error(f"사용자 생성 실패: {user_uuid}")
         raise HTTPException(status_code=500, detail="사용자 정보 저장 오류")
 
-@app.delete("/user/{user_uuid}")
+@app.delete(
+    "/user/{user_uuid}",
+    tags=["사용자"],
+    summary="사용자 삭제",
+    description="Model Server의 `DELETE /user/{user_uuid}`로 녹음·모델 폴더를 지운 뒤 DB에서 사용자를 지운다.",
+)
 def delete_user(user_uuid: str):
     try:
         response = requests.delete(f"{MODEL_SERVER_API_URL}/user/{user_uuid}", timeout=10)
@@ -127,7 +142,12 @@ async def check_tts_status(user_uuid: str):
         logging.error(f"TTS 상태 확인 중 오류 발생: {e}")
         return "error"
 
-@app.post("/user/{user_uuid}/upload")
+@app.post(
+    "/user/{user_uuid}/upload",
+    tags=["녹음 파일"],
+    summary="녹음 업로드",
+    description="확장자를 검사하고(ogg, m4a 등) Model Server의 `POST /user/{user_uuid}/upload`로 그대로 전달한다. 파일은 Model Server 디스크에만 저장되고 DB에는 기록하지 않는다.",
+)
 async def upload_file(user_uuid: str, file: UploadFile = File(...)):
     if not allowed_file(file.filename, ALLOWED_EXTENSIONS):
         logging.warning(f"허용되지 않은 파일 형식: {file.filename}")
@@ -147,7 +167,12 @@ async def upload_file(user_uuid: str, file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"파일 업로드 중 오류 발생: {e}")
 
 
-@app.get("/user/{user_uuid}/files")
+@app.get(
+    "/user/{user_uuid}/files",
+    tags=["녹음 파일"],
+    summary="업로드한 파일 목록",
+    description="Model Server의 `GET /user/{user_uuid}/files` 결과를 그대로 돌려준다.",
+)
 def get_user_files(user_uuid: str):
     try:
         response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/files", timeout=10)
@@ -160,7 +185,12 @@ def get_user_files(user_uuid: str):
         raise HTTPException(status_code=500, detail=f"파일 목록 조회 중 오류 발생: {e}")
 
 
-@app.delete("/user/{user_uuid}/raw/{filename}")
+@app.delete(
+    "/user/{user_uuid}/raw/{filename}",
+    tags=["녹음 파일"],
+    summary="업로드한 파일 삭제",
+    description="Model Server의 `DELETE /user/{user_uuid}/raw/{filename}`을 부른다.",
+)
 async def delete_file(user_uuid: str, filename: str):
     try:
         response = requests.delete(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/raw/{filename}", timeout=10)
@@ -173,7 +203,12 @@ async def delete_file(user_uuid: str, filename: str):
         raise HTTPException(status_code=500, detail=f"파일 삭제 중 오류 발생: {e}")
 
 
-@app.get("/user/{user_uuid}/modelcheck")
+@app.get(
+    "/user/{user_uuid}/modelcheck",
+    tags=["학습"],
+    summary="학습 완료 확인",
+    description="Model Server의 `GET /user/{user_uuid}/modelcheck`를 부른다. \"모델 파일 존재\"면 완료, \"모델 생성 실패\"면 500, 그 외(\"모델 파일 없음\")는 아직 안 끝났거나 실패를 모르는 상태다 (#11).",
+)
 async def model_check(user_uuid: str):
     try:
         check_response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/modelcheck", timeout=10)
@@ -192,7 +227,12 @@ async def model_check(user_uuid: str):
         raise HTTPException(status_code=500, detail=f"모델 파일 확인 중 오류 발생: {e}")
 
 
-@app.get("/user/{user_uuid}/raw/{filename}")
+@app.get(
+    "/user/{user_uuid}/raw/{filename}",
+    tags=["녹음 파일"],
+    summary="파일 받기",
+    description="Model Server의 `GET /user/{user_uuid}/raw/{filename}`로 파일을 받아 그대로 내려준다. TTS 결과는 `convert.wav`.",
+)
 async def download_file(user_uuid: str, filename: str):
     try:
         response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/raw/{filename}", timeout=10)
@@ -212,7 +252,13 @@ async def download_file(user_uuid: str, filename: str):
         raise HTTPException(status_code=500, detail=f"파일 다운로드 중 오류 발생: {e}")
 
 
-@app.post("/user/{user_uuid}/models") 
+@app.post(
+    "/user/{user_uuid}/models",
+    tags=["학습"],
+    summary="학습 요청 (대기열에 추가)",
+    description="학습을 바로 하지 않고 Main의 대기열(메모리)에 넣는다. 대기열 처리 작업이 한 명씩 꺼내 Model Server의 `POST /models`로 보내고, 끝날 때까지 `modelcheck`로 확인한다. 같은 사용자가 이미 대기 중이면 다시 넣지 않는다.",
+)
+ 
 async def create_user_model(
     user_uuid: str,
     sample_rate: str = Form("40000"), 
@@ -238,7 +284,12 @@ async def create_user_model(
 
 
 # TTS 요청 처리 함수 수정 (파일 다운로드 추가)
-@app.post("/user/{user_uuid}/tts")
+@app.post(
+    "/user/{user_uuid}/tts",
+    tags=["TTS"],
+    summary="TTS (텍스트 → 내 목소리)",
+    description="Model Server의 `POST /tts`로 요청하고, `GET /user/{user_uuid}/status`가 `progress`인 동안 0.3초마다 확인한 뒤 `convert.wav`를 받아 바로 내려준다. pitch를 안 보내면 `config.ini`의 기본값(3).",
+)
 async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: int = Form(DEFAULT_PITCH)):
     try:
         tts_data = {
@@ -337,7 +388,12 @@ async def process_model_queue():
                 logging.info(f"대기열 위치 삭제: {user_uuid}")
 
 # 대기열 상태 조회 엔드포인트
-@app.get("/queue_status")
+@app.get(
+    "/queue_status",
+    tags=["학습"],
+    summary="전체 대기열 크기",
+    description="대기열에 남은 요청 수(`queue_size`)와 `model_tasks` 항목 수(`active_tasks`)를 돌려준다.",
+)
 async def queue_status():
     logging.info("대기열 상태 조회 요청")
     queue_size = model_queue.qsize()
@@ -346,7 +402,12 @@ async def queue_status():
     return {"queue_size": queue_size, "active_tasks": active_tasks}
 
 # 사용자 대기열 정보 조회 엔드포인트
-@app.get("/user/{user_uuid}/queue")
+@app.get(
+    "/user/{user_uuid}/queue",
+    tags=["학습"],
+    summary="내 대기열 위치",
+    description="대기 중이면 위치를 돌려준다. 학습이 시작돼 대기열에서 빠지면 \"대기열에 추가되지 않았습니다\"가 나온다 (대기 / 학습 중 / 완료 / 실패를 구분하지 못함).",
+)
 async def get_user_queue_info(user_uuid: str):
     logging.info(f"사용자 {user_uuid} 대기열 상태 조회 요청")
     if user_uuid in [p[0] for p in model_tasks]:
@@ -361,7 +422,12 @@ async def get_user_queue_info(user_uuid: str):
         return {"status": "대기열에 추가되지 않았습니다."}
 
 # 서버 온라인 상태 확인 엔드포인트
-@app.get("/online")
+@app.get(
+    "/online",
+    tags=["상태"],
+    summary="서버 상태 확인 (Model Server 포함)",
+    description="Model Server의 `GET /online`까지 불러서 `model_server`에 연결 여부를 돌려준다.",
+)
 async def check_online():
     logging.info("서버 온라인 상태 확인 요청")
     try:
