@@ -185,6 +185,68 @@ TTS 변환은 짧은 문장 약 10초, 긴 문장(결과 10.5초) 11 ~ 31초 걸
 - **`install.bat`**: `pip install --upgrade setuptools`가 최신 setuptools를 설치하는데, 최신 버전에는 `pkg_resources`가 없어 librosa를 불러올 때 `ModuleNotFoundError`가 납니다. `setuptools<70`으로 고정했습니다.
 - **`start.bat`**: 원래 팀 컴퓨터의 경로(`C:\Users\user\rvc-cli`)가 고정돼 있어서, 파일이 있는 폴더 기준으로 실행하게 바꿨습니다.
 
+## Main Server 실행 (macOS)
+
+Main Server는 사용자(UUID)를 MariaDB에 저장하고, 녹음 업로드·학습·TTS 요청을 Model Server로 전달합니다. Model Server가 다른 컴퓨터(예: Windows GPU 컴퓨터)에 있어도 됩니다 ([#2](../../issues/2)).
+
+### 1. 설정 (`.env`)
+
+DB 계정과 Model Server 주소처럼 컴퓨터마다 다른 값은 `backend/MainServer/.env`에 둡니다 (git에 올리지 않음). 환경 변수가 있으면 `config.ini` 값보다 우선합니다.
+
+```bash
+cd backend/MainServer
+cp .env.example .env
+# .env를 열어 DB_USER, DB_PASSWORD를 채우고,
+# Model Server가 다른 컴퓨터면 MODEL_SERVER_URL=http://<그 컴퓨터 IP>:48000
+```
+
+### 2. MariaDB (Docker)
+
+`.env`의 계정으로 DB를 만듭니다. 처음 실행할 때 `reflecxity` DB와 계정이 만들어지고, 테이블은 Main Server가 시작할 때 `db_schema.sql`로 만듭니다.
+
+```bash
+set -a; . ./.env; set +a
+docker run -d --name reflecxity-db -p 3306:3306 \
+  -e MARIADB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" \
+  -e MARIADB_DATABASE=reflecxity \
+  -e MARIADB_USER="$DB_USER" -e MARIADB_PASSWORD="$DB_PASSWORD" \
+  -v reflecxity-db:/var/lib/mysql \
+  mariadb:11
+```
+
+`DB_ROOT_PASSWORD`는 DB 관리용이라 `.env`에 따로 적어 둡니다 (Main Server는 쓰지 않음).
+
+### 3. Python 가상 환경과 실행
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python main.py
+```
+
+- 주소: `http://localhost:28300`, API 문서: `http://localhost:28300/docs`
+- 로그에 `테이블 생성 완료`가 나와야 합니다
+- `mysql-connector-python`은 8.x로 고정했습니다. 9.x에서는 `cursor.execute(..., multi=True)`가 없어져 테이블 생성이 실패합니다
+
+### 4. 동작 확인 (Main → Model)
+
+```bash
+# 1) 사용자 생성 → {"uuid": ...}
+curl -X POST localhost:28300/user
+
+# 2) 녹음 업로드 (m4a / ogg)
+curl -F "file=@voice.m4a" localhost:28300/user/<uuid>/upload
+
+# 3) 학습 요청 (대기열에 들어감) → 완료 확인
+curl -X POST localhost:28300/user/<uuid>/models
+curl localhost:28300/user/<uuid>/modelcheck
+
+# 4) TTS (결과 음성 파일을 바로 받음)
+curl -X POST localhost:28300/user/<uuid>/tts -F "tts_text=Hello, this is my voice." -o result.wav
+```
+
+Mac(Main, MariaDB) + Windows RTX 3060(Model)에서 10분 녹음 기준 학습 요청부터 Main이 완료를 확인하기까지 4분 20초, TTS는 약 20초 걸렸습니다. TTS는 edge-tts 응답에 따라 가끔 실패하니 다시 요청해 봅니다.
+
 ## 개선 작업
 
 개선은 이슈 → 브랜치 → PR로 하나씩 진행합니다. 진행 상황은 [Issues](../../issues)에서 볼 수 있습니다.
