@@ -4,3 +4,4 @@ python-multipart
 mysql-connector-python
 configparser
 python-dotenv
+requests
