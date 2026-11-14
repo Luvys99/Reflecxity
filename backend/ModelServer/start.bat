@@ -1,2 +1,3 @@
-cd C:\Users\user\rvc-cli
+@echo off
+cd /d "%~dp0"
 env\python.exe main.py

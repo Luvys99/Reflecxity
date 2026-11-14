@@ -115,6 +115,63 @@ curl localhost:48000/user/test-user/status   # {"tts":"success"}가 나오면 �
 - **TTS는 인터넷이 필요합니다**: 기계 음성은 `edge-tts`로 Microsoft 음성 서버에서 받아 옵니다. 서버 응답에 따라 가끔 실패할 수 있으니 다시 요청해 봅니다.
 - **실행하면 설정 파일이 바뀝니다**: CUDA가 없는 환경에서 실행하면 RVC가 `rvc/configs/v1|v2/*.json`의 `fp16_run`을 `false`로 바꿔 저장합니다. 이 변경은 커밋하지 않습니다.
 
+## Model Server 실행 (Windows + NVIDIA GPU)
+
+원본과 같은 환경(Windows + CUDA)입니다. 원래 팀의 설치 스크립트를 그대로 쓰고, 지금 다시 설치하면 깨지는 부분만 고쳤습니다 ([#8](../../issues/8)).
+
+### 확인한 환경
+
+| 항목 | 버전 |
+| --- | --- |
+| OS | Windows |
+| GPU | NVIDIA GeForce RTX 3060 (드라이버의 CUDA 13.3) |
+| Python | 3.9 (`install.bat`이 Miniconda로 설치) |
+| torch | 2.3.1+cu121 |
+
+### 1. 설치
+
+Git이 필요합니다. 경로에 한글이나 띄어쓰기가 없는 곳에 받습니다.
+
+```powershell
+mkdir C:\dev
+cd C:\dev
+git clone https://github.com/Luvys99/Reflecxity.git
+cd Reflecxity\backend\ModelServer
+.\install.bat
+```
+
+`install.bat`은 `%UserProfile%\Miniconda3`에 Miniconda를 설치하고, `ModelServer\env`에 Python 3.9 환경을 만든 뒤 패키지와 CUDA 12.1용 torch를 설치합니다. 시스템에 Python을 등록하지는 않습니다.
+
+GPU가 잡히는지 확인합니다. `True`가 나와야 합니다.
+
+```powershell
+env\python.exe -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+### 2. 사전 학습 모델 받기
+
+Windows에서는 `ffmpeg.exe`, `ffprobe.exe`도 같이 받습니다 (`--exe` 기본값).
+
+```powershell
+env\python.exe rvc_cli.py prerequisites
+```
+
+### 3. 서버 실행
+
+```powershell
+.\start.bat
+```
+
+- 다른 컴퓨터(Main Server)에서 접속하려면 Windows 방화벽에서 48000 포트를 허용해야 합니다. 처음 실행할 때 뜨는 허용 창에서 허용합니다.
+- 동작 확인은 macOS와 같습니다. `localhost` 대신 `127.0.0.1`을 씁니다 (Windows에서 `localhost`가 IPv6로 먼저 연결되면 접속되지 않을 수 있음).
+
+1분 48초짜리 녹음(Mac에서 UVR 처리한 결과 파일) 기준으로 UVR 모델 다운로드와 UVR을 포함한 학습은 약 2분, TTS 변환은 12 ~ 15초 걸렸습니다 (Main Server가 있는 Mac에서 와이파이로 요청).
+
+### 원래 스크립트에서 고친 것
+
+- **`install.bat`**: `pip install --upgrade setuptools`가 최신 setuptools를 설치하는데, 최신 버전에는 `pkg_resources`가 없어 librosa를 불러올 때 `ModuleNotFoundError`가 납니다. `setuptools<70`으로 고정했습니다.
+- **`start.bat`**: 원래 팀 컴퓨터의 경로(`C:\Users\user\rvc-cli`)가 고정돼 있어서, 파일이 있는 폴더 기준으로 실행하게 바꿨습니다.
+
 ## 개선 작업
 
 개선은 이슈 → 브랜치 → PR로 하나씩 진행합니다. 진행 상황은 [Issues](../../issues)에서 볼 수 있습니다.

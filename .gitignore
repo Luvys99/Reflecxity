@@ -20,3 +20,7 @@ backend/ModelServer/rvc/models/**/*.pt
 backend/ModelServer/rvc/models/**/*.pth
 backend/ModelServer/rvc/models/**/*.bin
 backend/ModelServer/rvc/models/**/*.onnx
+
+# Windows에서 prerequisites가 받는 실행 파일
+backend/ModelServer/ffmpeg.exe
+backend/ModelServer/ffprobe.exe
