@@ -158,7 +158,7 @@ def delete_user(user_uuid: str):
     "/user/{user_uuid}/modelcheck",
     tags=["학습"],
     summary="학습 완료 확인",
-    description="`logs/{user_uuid}/`에 `fail` 파일이 있으면 \"모델 생성 실패\", `pitch.txt`가 있으면 \"모델 파일 존재\", 그 외는 전부 \"모델 파일 없음\". `fail`은 잘린 조각이 10개 이하일 때만 생긴다 (#11).",
+    description="학습 상태(`user/{user_uuid}/status.json`의 `train`)가 `fail`이거나 `logs/{user_uuid}/fail` 파일이 있으면 \"모델 생성 실패\", `pitch.txt`가 있으면 \"모델 파일 존재\", 그 외는 \"모델 파일 없음\"(진행 중). 실패 원인은 `GET /user/{user_uuid}/status`의 `train_error`.",
 )
 def check_model_files(user_uuid: str):
     try:
@@ -175,6 +175,9 @@ def check_model_files(user_uuid: str):
             if f.startswith("added_") and f.endswith(".index")
         ]
         '''
+        # 학습 상태가 fail이면 실패 (run_training이 어떤 에러든 기록한다)
+        if status_manager.get_status(user_uuid).get("train") == "fail":
+            return {"message": "모델 생성 실패"}
         # fail 파일 존재 여부 확인
         if os.path.exists(fail_file_path):
             return {"message": "모델 생성 실패"}
@@ -277,8 +280,12 @@ async def create_model(background_tasks_model: BackgroundTasks, model_data: dict
                 os.remove(m4a_file)  # 기존 m4a 파일 삭제
                 print(f"Removed {filename}")'''
 
+        # 응답하기 전에 상태를 progress로 바꾼다 (이전 학습의 fail이 남아 있으면 Main이 바로 실패로 읽기 때문)
+        status_manager.update_status(user_uuid=model_name, task="train", value="progress")
+        status_manager.update_status(user_uuid=model_name, task="train_error", value="")
+
         # 모델 생성 작업을 백그라운드에서 실행
-        background_tasks_model.add_task(create_model_async, model_name, dataset_path, sample_rate, cpu_cores, voice_file_name)
+        background_tasks_model.add_task(run_training, model_name, dataset_path, sample_rate, cpu_cores, voice_file_name)
 
         # 즉시 응답 반환
         return {
@@ -290,6 +297,18 @@ async def create_model(background_tasks_model: BackgroundTasks, model_data: dict
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"모델 생성 중 오류 발생: {e}")
+
+# 학습을 실행하고 결과(성공 / 실패 + 원인)를 상태 파일에 남긴다
+# create_model_async 안의 어느 단계에서 에러가 나도 여기서 잡아 fail로 기록한다 (#11)
+async def run_training(model_name, dataset_path, sample_rate, cpu_cores, voice_file_name):
+    try:
+        await create_model_async(model_name, dataset_path, sample_rate, cpu_cores, voice_file_name)
+        status_manager.update_status(user_uuid=model_name, task="train", value="success")
+    except Exception as e:
+        reason = e.detail if isinstance(e, HTTPException) else f"{type(e).__name__}: {e}"
+        print(f"[Model {model_name}] 학습 실패: {reason}")
+        status_manager.update_status(user_uuid=model_name, task="train", value="fail")
+        status_manager.update_status(user_uuid=model_name, task="train_error", value=reason)
 
 # 비동기 모델 생성 작업 (모델 서버에서 비동기 처리)
 async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, voice_file_name):
@@ -495,7 +514,7 @@ async def run_command_async(command, model_id, step_name):
     "/user/{user_uuid}/status",
     tags=["TTS"],
     summary="TTS 상태",
-    description="`user/{user_uuid}/status.json`의 TTS 상태: idle / progress / success / fail (`status.py`).",
+    description="`user/{user_uuid}/status.json` (`status.py`). `tts`: idle / progress / success / fail. `train`: progress / success / fail, `train_error`: 학습 실패 원인.",
 )
 def get_user_status(user_uuid: str):
     status = status_manager.get_status(user_uuid)
