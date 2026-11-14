@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import io
+from dotenv import load_dotenv
 
 from file_manager import FileHandler
 from db_manager import DBManager
@@ -21,13 +22,27 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-# 설정 파일에서 DB 정보 가져오기
+# 컴퓨터마다 다른 값(DB 계정, Model Server 주소)은 환경 변수로 받는다
+# .env 파일이 있으면 그 값을 환경 변수로 읽는다 (.env는 git에 올리지 않음, 예시는 .env.example)
+load_dotenv()
+
+def get_setting(env_name, section, key):
+    """환경 변수가 있으면 그 값을, 없으면 config.ini 값을 쓴다"""
+    value = os.environ.get(env_name) or config.get(section, key, fallback=None)
+    if not value:
+        raise RuntimeError(f"설정 {env_name}이(가) 없습니다. .env 또는 환경 변수에 넣어 주세요 (.env.example 참고)")
+    return value
+
+# DB 정보
 DB_CONFIG = {
-    "host": config.get('DATABASE', 'host'),
-    "user": config.get('DATABASE', 'user'),
-    "password": config.get('DATABASE', 'password'),
-    "database": config.get('DATABASE', 'database'),
+    "host": get_setting('DB_HOST', 'DATABASE', 'host'),
+    "user": get_setting('DB_USER', 'DATABASE', 'user'),
+    "password": get_setting('DB_PASSWORD', 'DATABASE', 'password'),
+    "database": get_setting('DB_NAME', 'DATABASE', 'database'),
 }
+
+# Model Server 주소 (FileHandler도 config에서 읽으므로 config 값을 덮어쓴다)
+config['MODEL_SERVER']['api_url'] = get_setting('MODEL_SERVER_URL', 'MODEL_SERVER', 'api_url')
 
 ALLOWED_EXTENSIONS = {"txt", "pdf", "png", "jpg", "jpeg", "zip", "ogg", "m4a"}
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
