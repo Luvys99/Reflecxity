@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 import argparse
 import subprocess
 from functools import lru_cache
@@ -388,8 +389,11 @@ def run_tts_script(
             ],
         ),
     ]
+    t0 = time.perf_counter()
     subprocess.run(command_tts)
+    t1 = time.perf_counter()
     infer_pipeline = import_voice_converter()
+    t2 = time.perf_counter()
     infer_pipeline.convert_audio(
         pitch=pitch,
         filter_radius=filter_radius,
@@ -429,6 +433,9 @@ def run_tts_script(
         delay=None,
         sliders=None,
     )
+    t3 = time.perf_counter()
+    # 구간별 시간 (#15). 프로세스 띄우기는 main.py에서 잰 전체에서 빼서 구한다
+    print(f"[TTS 시간] edge-tts {t1 - t0:.2f}s, import {t2 - t1:.2f}s, convert_audio {t3 - t2:.2f}s", flush=True)
 
     return f"Text {tts_text} synthesized successfully.", output_rvc_path.replace(
         ".wav", f".{export_format.lower()}"
