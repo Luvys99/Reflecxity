@@ -61,7 +61,8 @@ model_queue_positions = []
 db_manager = DBManager(DB_CONFIG)
 db_manager.create_table()
 
-app = FastAPI()
+# Swagger(/docs)에서 Execute 결과 아래에 걸린 시간을 표시한다 (#15)
+app = FastAPI(swagger_ui_parameters={"displayRequestDuration": True})
 
 @app.on_event("startup")
 async def create_model_queue():

@@ -19,6 +19,7 @@ from status import StatusManager  # status.py 임포트
 
 from pydub import AudioSegment
 import asyncio  # asyncio를 임포트
+import time
 from fastapi.background import BackgroundTasks
 from concurrent.futures import ThreadPoolExecutor
 from scipy.spatial.distance import cdist  # DTW를 위한 라이브러리 추가 
@@ -622,7 +623,10 @@ async def synthesize_tts_async(pth_path, index_path, tts_text, user_uuid, pitch)
         else:
             print(f"pitch.txt 파일이 존재하지 않습니다. 기본 피치 값을 사용합니다.")
         '''
-        await run_command_async(tts_command, user_uuid, "TTS")        
+        t_start = time.perf_counter()
+        await run_command_async(tts_command, user_uuid, "TTS")
+        # TTS 전체 시간 (프로세스 띄우기 ~ 끝, #15)
+        print(f"[Model {user_uuid}] [TTS 시간] 전체 {time.perf_counter() - t_start:.2f}s")
 
         # convert.m4a 파일 경로
         output_m4a_path = os.path.join(
