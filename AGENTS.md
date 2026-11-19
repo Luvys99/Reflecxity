@@ -64,6 +64,8 @@ Main(`MainServer/train_queue.py`)과 워커(`ModelServer/job_worker.py`, `*_work
 | `stream:tts` / 그룹 `tts-workers` | Stream | (④-2) → TTS 워커 | 한 줄에 `job_id` |
 | `job:{job_id}` | Hash | Main이 만들고 워커가 상태를 바꿈 | `type`, `user`, `status`, `attempts`, `error`, `message_id`, 시각들 (TTS는 `text`, `pitch`) |
 | `user:{uuid}:train` | String | Main | 그 사용자의 최근 학습 `job_id` |
+| `job:{job_id}:result` | String (bytes) | 워커 → Main | 작업 결과 (TTS는 wav). 10분 뒤 자동 삭제 |
+| `job:{job_id}:done` | List | 워커 → Main(`BLPOP`) | 최종 `success` / `fail` 신호 (재시도 중에는 없음). 10분 뒤 자동 삭제 |
 
 `status`: `queued`(Main) → `progress`(워커) → `success` / `fail`(워커)
 - `android/`: Java 앱. Main Server만 호출합니다.
