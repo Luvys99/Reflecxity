@@ -42,7 +42,10 @@
 
 ## 구조
 - `backend/MainServer`: 앱이 부르는 API(FastAPI, 28300)와 MariaDB. Model Server와는 HTTP로만 통신하고 그 코드를 import하지 않습니다.
-- `backend/ModelServer`: 프로젝트 코드는 `main.py`, `status.py`(FastAPI, 48000)뿐입니다.
+- `backend/ModelServer`: 프로젝트 코드는 아래 파일뿐입니다.
+  - `main.py`(FastAPI, 48000), `status.py`(사용자별 상태 파일)
+  - `training.py`(학습 파이프라인, 서버와 워커가 같이 씀), `command.py`(하위 프로세스 실행기)
+  - `train_worker.py`(Redis `stream:train`을 처리하는 학습 워커, 서버와 별개 프로세스), `tests/`
   `rvc_cli.py`, `uvr_cli.py`, `rvc/`, `uvr/`, `docs/`, `assets/`는 외부 rvc-cli 코드라 고치지 않습니다. 꼭 필요하면 먼저 물어봐 주세요.
 - `rvc/configs/*.json`은 실행할 때마다 바뀝니다. 커밋하지 않습니다.
 - `android/`: Java 앱. Main Server만 호출합니다.
