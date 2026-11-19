@@ -22,7 +22,7 @@
 
 ## 명령어
 - 빌드: 없음 (Python은 빌드 단계가 없고, Android 빌드는 이 저장소의 개선 범위 밖)
-- 테스트: 아직 자동 테스트가 없습니다. 생기면 이 줄을 실행 명령으로 바꿉니다.
+- 테스트: `cd backend/ModelServer && .venv/bin/python -m pytest tests` (학습 워커 규칙, Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
   `backend/*/test.py`는 실제 서버에 요청을 보내는 수동 스크립트라 테스트가 아닙니다 (Model 쪽은 학습까지 요청함)
 - 로컬 실행 (Mac):
   - DB·Redis: `cd backend/MainServer && docker compose up -d` (Tailscale 먼저 켜기)
@@ -36,6 +36,7 @@
   - `main.py`(FastAPI, 48000), `status.py`(사용자별 상태 파일)
   - `training.py`(학습 파이프라인), `command.py`(하위 프로세스 실행기, 학습·TTS 공용)
   - `train_worker.py`(Redis `stream:train`을 처리하는 학습 워커, 서버와 별개 프로세스. 학습 파이프라인은 `training.py`를 같이 씀)
+  - `tests/`(pytest. 실행 명령은 위 "명령어")
   `rvc_cli.py`, `uvr_cli.py`, `rvc/`, `uvr/`, `docs/`, `assets/`는 외부 rvc-cli 코드라 고치지 않습니다. 꼭 필요하면 먼저 물어봐 주세요.
 - `rvc/configs/*.json`은 실행할 때마다 바뀝니다. 커밋하지 않습니다.
 - `android/`: Java 앱. Main Server만 호출합니다.
