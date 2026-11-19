@@ -22,7 +22,7 @@
 
 ## 명령어
 - 빌드: 없음 (Python은 빌드 단계가 없고, Android 빌드는 이 저장소의 개선 범위 밖)
-- 테스트: 아직 자동 테스트가 없습니다. 생기면 이 줄을 실행 명령으로 바꿉니다.
+- 테스트: `cd backend/ModelServer && .venv/bin/python -m pytest tests` (학습 워커 규칙, Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
   `backend/*/test.py`는 실제 서버에 요청을 보내는 수동 스크립트라 테스트가 아닙니다 (Model 쪽은 학습까지 요청함)
 - 로컬 실행 (Mac):
   - DB·Redis: `cd backend/MainServer && docker compose up -d` (Tailscale 먼저 켜기)
