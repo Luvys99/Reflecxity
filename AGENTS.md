@@ -25,7 +25,7 @@
 - 테스트: 아직 자동 테스트가 없습니다. 생기면 이 줄을 실행 명령으로 바꿉니다.
   `backend/*/test.py`는 실제 서버에 요청을 보내는 수동 스크립트라 테스트가 아닙니다 (Model 쪽은 학습까지 요청함)
 - 로컬 실행 (Mac):
-  - DB: `docker start reflecxity-db`
+  - DB·Redis: `cd backend/MainServer && docker compose up -d` (Tailscale 먼저 켜기)
   - Main: `cd backend/MainServer && .venv/bin/python main.py` → http://localhost:28300/docs (`.env` 필요, README 참고)
   - Model: `cd backend/ModelServer && .venv/bin/python main.py` → http://localhost:48000/docs
   - 학습·TTS 요청은 GPU와 수 분의 시간을 씁니다. 실행 전에 물어봐 주세요.
