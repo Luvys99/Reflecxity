@@ -5,3 +5,6 @@ mysql-connector-python<9
 configparser
 python-dotenv
 requests
+
+# 학습 작업 큐 (train_queue.py, #42)
+redis==7.0.1
