@@ -43,8 +43,9 @@ def find_model_files(user_uuid):
     return pth_path, index_path
 
 
-# 문장을 내 목소리 음성으로 만들어 user/{uuid}/convert.wav에 저장한다. 결과 파일이 없으면 HTTPException(500)
-async def synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path):
+# 문장을 내 목소리 음성으로 만들어 output_path에 저장한다. 결과 파일이 없으면 HTTPException(500)
+# Model 서버는 user/{uuid}/convert.wav, TTS 워커는 작업마다 다른 임시 파일을 넘긴다 (#36)
+async def synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path, output_path):
     # TTS 임시 파일을 저장할 폴더가 없으면 만든다 (git은 빈 폴더를 저장하지 않아 새로 받으면 없다)
     os.makedirs(os.path.join(".", "temptts"), exist_ok=True)
     # edge-tts 기계 음성 임시 파일은 요청마다 다른 이름으로 쓴다.
@@ -63,9 +64,7 @@ async def synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path):
         "--output_tts_path",
         temp_tts_path,
         "--output_rvc_path",
-        os.path.join(
-            ".", "user", user_uuid, "convert.wav"
-        ),  # os.path.join 사용
+        output_path,
         "--pth_path",
         pth_path,
         "--index_path",
@@ -96,13 +95,8 @@ async def synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path):
     # TTS 전체 시간 (프로세스 띄우기 ~ 끝, #15)
     print(f"[Model {user_uuid}] [TTS 시간] 전체 {time.perf_counter() - t_start:.2f}s")
 
-    # convert.m4a 파일 경로
-    output_m4a_path = os.path.join(
-        ".", "user", user_uuid, "convert.wav"
-    )  # os.path.join 사용
-
     # 파일 존재 확인
-    if not os.path.exists(output_m4a_path):
+    if not os.path.exists(output_path):
         raise HTTPException(
             status_code=500, detail="TTS wav 파일을 찾을 수 없습니다."
         )

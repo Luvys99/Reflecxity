@@ -317,7 +317,7 @@ async def synthesize_tts(background_tasks_tts: BackgroundTasks, tts_data: dict =
 
 async def synthesize_tts_async(pth_path, index_path, tts_text, user_uuid, pitch):
     try:
-        await synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path)
+        await synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path, os.path.join(".", "user", user_uuid, "convert.wav"))
 
         status_manager.update_status(user_uuid=user_uuid, task="tts", value="success")
 
