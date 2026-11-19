@@ -16,6 +16,8 @@ from fastapi import FastAPI, HTTPException, Body, File, UploadFile, Path
 from fastapi.responses import FileResponse
 from typing import Optional
 from status import StatusManager  # status.py 임포트
+from command import run_command_async
+from training import create_model_async, prepare_training, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES
 
 from pydub import AudioSegment
 import asyncio  # asyncio를 임포트
@@ -196,36 +198,6 @@ def check_model_files(user_uuid: str):
         print(f"모델 파일 확인 중 오류 발생: {e}")
         raise HTTPException(status_code=500, detail=f"모델 파일 확인 중 오류 발생: {e}") 
 
-# 백그라운드 작업 함수 생성
-async def combine_audio(model_name, dataset_path, voice_file_name):
-    sr = 22050
-    combined_audio = []
-    try:
-        if len(voice_file_name) != 1:
-            for file_name in voice_file_name:
-                # librosa.load를 비동기적으로 실행 (익명 함수를 사용하여 sr 인수 전달)
-                audio = await asyncio.get_event_loop().run_in_executor(
-                    executor,
-                    lambda: librosa.load(os.path.join(dataset_path, file_name), sr=sr)
-                )
-                combined_audio.append(audio[0])
-            combined_audio = np.concatenate(combined_audio)
-            voice_file = os.path.join(dataset_path, "combined.wav")
-
-            # sf.write를 비동기적으로 실행
-            await asyncio.get_event_loop().run_in_executor(
-                executor, sf.write, voice_file, combined_audio, sr
-            )
-
-            for i in range(len(voice_file_name)):
-                os.remove(os.path.join(dataset_path, voice_file_name[i]))
-            print(f"[Model {model_name}] 음성 파일 병합 완료")
-            return voice_file
-        else:
-            print("오디오 파일이 하나만 존재합니다. 기존 방식으로 처리됩니다.")
-            return os.path.join(dataset_path, voice_file_name[0])
-    except Exception as e:
-        print(f"[Model {model_name}] 음성 파일 병합 중 오류 발생: {e}")
 
 
 # 모델 생성 요청 처리 함수 (비동기 처리 추가)
@@ -239,32 +211,14 @@ async def create_model(background_tasks_model: BackgroundTasks, model_data: dict
     try:
         # 요청 데이터에서 필요한 정보 추출 (model_name 제외)
         user_uuid = model_data.get("user_uuid")
-        dataset_path = os.path.join("user", user_uuid, "raw")
-        sample_rate = model_data.get("sample_rate", "40000")
-        cpu_cores = model_data.get("cpu_cores", 4)
-        fail_file_path = os.path.join(".", "logs", user_uuid, "fail")
+        sample_rate = model_data.get("sample_rate", DEFAULT_SAMPLE_RATE)
+        cpu_cores = model_data.get("cpu_cores", DEFAULT_CPU_CORES)
         # 입력값 검증
         if not user_uuid:
             raise ValueError("user_uuid is required")
-        
-        # fail_file_path가 존재할 경우에만 삭제
-        if os.path.exists(fail_file_path):
-            os.remove(fail_file_path)
-        print("test")
-        # 모델 이름을 user_uuid 사용
-        
-        voice_file_name = [
-            f for f in os.listdir(dataset_path) if f.endswith(".m4a") or f.endswith(".ogg") or f.endswith(".wav") 
-        ]
 
-        if voice_file_name:
-            # voice_file_name에서 첫 번째 파일을 선택
-            voice_file = os.path.join(dataset_path, voice_file_name[0])
-            print("음성 파일 존재")
-        else:
-            print("음성 파일 없음")
+        dataset_path, voice_file_name = prepare_training(user_uuid)
 
-        
         model_name = user_uuid
         model_id = model_name
        
@@ -312,203 +266,8 @@ async def run_training(model_name, dataset_path, sample_rate, cpu_cores, voice_f
         status_manager.update_status(user_uuid=model_name, task="train", value="fail")
         status_manager.update_status(user_uuid=model_name, task="train_error", value=reason)
 
-# 비동기 모델 생성 작업 (모델 서버에서 비동기 처리)
-async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, voice_file_name):
-    # --- 0. 음성 통합 시스템 실행 ---
-    
-    sr = 40000
-    combined_audio = []
-    voice_file = await combine_audio(model_name, dataset_path, voice_file_name)
-    # --- 1. Uvr 실행 ---
-    print(voice_file)
-    uvr_command = [
-        sys.executable,
-        "uvr_cli.py",
-        "--audio_file", voice_file,
-        "--model_filename", "model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt",
-        "--output_format", "OGG",
-        "--output_dir", dataset_path,
-        "--sample_rate", sample_rate,
-        "--vr_batch_size", "4",
-        "--vr_window_size", "320",
-        "--model_file_dir", "uvrmodel",
-        "--single_stem", "Vocals",
-        "--mdx_segment_size", "512",
-        "--mdxc_segment_size", "512",
-        "--demucs_segment_size", "100",
-        "--mdx_enable_denoise"
-    ]
-    voice_file_check = [
-        f for f in os.listdir(dataset_path) if f.endswith(".ogg")
-    ]
-    if not voice_file_check:
-        await run_command_async(uvr_command, model_name, "uvr")  # 비동기 실행
-        remove_voice_file = [
-        f for f in os.listdir(dataset_path) if f.endswith(".wav") or f.endswith(".m4a")
-        ]
-        remove_voice_file = os.path.join(dataset_path, remove_voice_file[0])
-        os.remove(remove_voice_file)
-        print("노이즈 제거 음성 파일 존재")
-    else:
-        print("노이즈 제거 음성 파일 없음 혹은 이미 UVR처리 종료됨")
-
-    # --- 2. Preprocess 실행 ---
-    preprocess_command = [
-        sys.executable,
-        "rvc_cli.py",
-        "preprocess",
-        "--model_name", model_name,
-        "--dataset_path", dataset_path,
-        "--sample_rate", sample_rate,
-        "--cpu_cores", str(cpu_cores)
-    ]
-    await run_command_async(preprocess_command, model_name, "preprocess")  # 비동기 실행
-
-    # --- 3. Extract 실행 ---
-    extract_command = [
-        sys.executable,
-        "rvc_cli.py",
-        "extract",
-        "--model_name", model_name,
-        "--rvc_version", "v2",
-        "--sample_rate", sample_rate,
-        "--gpu", "0" if torch.cuda.is_available() else "-",  # CUDA가 없으면(Mac 등) CPU로 추출
-        "--cpu_cores", str(cpu_cores),
-        "--pitch_guidance", "True",
-        "--f0_method", "rmvpe"
-    ]
-    await run_command_async(extract_command, model_name, "extract")  # 비동기 실행
-
-    sliced_audio_dir = os.path.join(".", "logs", model_name, "sliced_audios_16k")
-    sliced_audio_files = os.listdir(sliced_audio_dir)
-    if len(sliced_audio_files) <= 10:
-        # 파일이 10개 이하일 경우 500 에러 반환 및 fail 파일 생성
-        fail_file_path = os.path.join(".", "logs", model_name, "fail")
-        with open(fail_file_path, "w") as f:
-            f.write("모델 생성 실패: sliced_audios_16k 폴더에 파일이 10개 이하입니다.")
-        raise HTTPException(status_code=500, detail="모델 생성 실패: sliced_audios_16k 폴더에 파일이 10개 이하입니다.")
-    # --- 4. Train 실행 ---
-    train_command = [
-        sys.executable,
-        "rvc_cli.py",
-        "train",
-        "--model_name", model_name,
-        "--rvc_version", "v2",
-        "--sample_rate", sample_rate,
-        "--total_epoch", "2",
-        "--pitch_guidance", "True",
-        "--save_every_epoch", "2",
-        "--save_only_latest", "True",
-        "--pretrained", "True"
-    ]
-    #"--gpu", "0"  # GPU 사용 시 설정
-    await run_command_async(train_command, model_name, "train")  # 비동기 실행
-
-            # 모델 파일 경로 찾기
-
-    model_dir = os.path.join(
-        ".", "logs", model_name
-    )  # os.path.join 사용
-    pth_files = [
-        f for f in os.listdir(model_dir) if f.endswith(".pth") and "_2e_" in f  
-    ]  # model_name 포함된 파일만 추가
-    index_files = [
-        f
-        for f in os.listdir(model_dir)
-        if f.startswith("added_") and f.endswith(".index")
-    ]
-
-    if not pth_files:
-        raise FileNotFoundError(f"No .pth file found in {model_dir}")
-    if not index_files:
-        raise FileNotFoundError(
-            f"No 'added_*.index' file found in {model_dir}"
-        )
-
-    pth_path = os.path.join(
-        model_dir, pth_files[0]
-    )  # os.path.join 사용
-    index_path = os.path.join(
-        model_dir, index_files[0]
-    )  # os.path.join 사용
-
-    # --- 5. autopitch 실행 ---
-    '''
-    pitch_command = [
-        sys.executable,
-        "rvc_cli.py",
-        "infer",
-        "--input_path", "pitchtest/temp.ogg",  # 테스트 음성 파일 경로
-        "--output_path", f"logs/{model_name}/after.ogg",  # 출력 음성 파일 경로
-        "--pth_path", pth_path,
-        "--index_path", index_path,
-        "--f0_method", "rmvpe",
-        "--export_format", "WAV",
-        "--pitch", "0"  # 초기 피치 값 설정
-    ]
-    await run_command_async(pitch_command, model_name, "autopitch")  # 비동기 실행
-    # --- 6. 피치 최적화 ---
-
-    print(f"[Model {model_name}] autopitch 단계 시작...")
-    best_pitch = await find_optimal_pitch(dataset_path, f"logs/{model_name}/after.wav", model_name, pth_path, index_path)
-    print(f"최적의 피치 값: {best_pitch}")
-    '''
-    
-    # --- 7. 피치 값 저장 ---
-    best_pitch = 0
-    with open(os.path.join(".", "logs", model_name, "pitch.txt"), "w") as f:
-        f.write(f"{best_pitch}")
-    print(f"[Model {model_name}] autopitch 단계 완료.")
 
 
-# 모델 명령어 실행 함수 (비동기 처리)
-
-async def run_command_async(command, model_id, step_name):
-    process = None
-    try:
-        if step_name != "autopitch":
-            print(f"[Model {model_id}] {step_name} 단계 시작...")
-
-        process = await asyncio.create_subprocess_exec(
-            *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-        )
-
-        async def print_stdout_logs():
-            while True:
-                line = await process.stdout.readline()
-                if not line:
-                    break
-                print(f"[Model {model_id}] {line.decode('utf-8', errors='ignore').strip()}")
-
-        async def print_stderr_logs():
-            while True:
-                err_line = await process.stderr.read(1024)
-                if not err_line:
-                    break
-                print(f"[Model {model_id}] LOG: {err_line.decode('utf-8', errors='ignore').strip()}")
-
-        stdout_task = asyncio.create_task(print_stdout_logs())
-        stderr_task = asyncio.create_task(print_stderr_logs())
-
-        await process.wait()
-
-        await stdout_task
-        await stderr_task
-
-        if process.returncode != 0:
-            raise RuntimeError(
-                f"{step_name} 단계 실행 중 오류 발생: 프로세스 종료 코드 {process.returncode}"
-            )
-
-        if step_name != "autopitch":
-            print(f"[Model {model_id}] {step_name} 단계 완료")
-
-    except Exception as e:
-        print(f"[Model {model_id}] {step_name} 단계 실행 중 오류 발생: {e}")
-        if process and process.returncode is None:
-            process.kill()  # 프로세스 강제 종료
-            await process.wait()  # 프로세스가 완전히 종료될 때까지 대기
-        raise e
 
 
 # 상태 확인 api
