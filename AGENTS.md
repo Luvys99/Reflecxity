@@ -33,7 +33,7 @@
 ## 명령어
 - 빌드: 없음 (Python은 빌드 단계가 없고, Android 빌드는 이 저장소의 개선 범위 밖)
 - 테스트 (Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
-  - Main: `cd backend/MainServer && .venv/bin/python -m pytest tests` (앱이 받는 학습 API 응답)
+  - Main: `cd backend/MainServer && .venv/bin/python -m pytest tests` (앱이 받는 학습·TTS API 응답)
   - Model: `cd backend/ModelServer && .venv/bin/python -m pytest tests` (학습·TTS 워커 규칙, Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
   `backend/*/test.py`는 실제 서버에 요청을 보내는 수동 스크립트라 테스트가 아닙니다 (Model 쪽은 학습까지 요청함)
 - 로컬 실행 (Mac):
@@ -44,7 +44,7 @@
 
 ## 구조
 - `backend/MainServer`: 앱이 부르는 API(FastAPI, 28300)와 MariaDB. Model Server의 코드를 import하지 않습니다.
-  - 학습은 `train_queue.py`가 Redis에 작업을 넣고 상태를 읽습니다 (Windows 학습 워커가 처리). 그 밖의 Model 호출은 HTTP
+  - 학습은 `train_queue.py`, TTS는 `tts_queue.py`가 Redis에 작업을 넣고 결과를 읽습니다 (Windows 워커가 처리). 그 밖의 Model 호출(업로드, 파일, 사용자 삭제)은 HTTP
 - `backend/ModelServer`: 프로젝트 코드는 아래 파일뿐입니다.
   - `main.py`(FastAPI, 48000), `status.py`(사용자별 상태 파일)
   - `training.py`(학습 파이프라인), `tts.py`(모델 파일 찾기, TTS 실행), `command.py`(하위 프로세스 실행기, 학습·TTS 공용)
@@ -61,10 +61,10 @@ Main(`MainServer/train_queue.py`)과 워커(`ModelServer/job_worker.py`, `*_work
 | 키 | 종류 | 쓰는 쪽 → 읽는 쪽 | 내용 |
 | --- | --- | --- | --- |
 | `stream:train` / 그룹 `train-workers` | Stream | Main(`XADD`) → 학습 워커 | 한 줄에 `job_id` |
-| `stream:tts` / 그룹 `tts-workers` | Stream | (④-2) → TTS 워커 | 한 줄에 `job_id` |
+| `stream:tts` / 그룹 `tts-workers` | Stream | Main(`XADD`) → TTS 워커 | 한 줄에 `job_id` |
 | `job:{job_id}` | Hash | Main이 만들고 워커가 상태를 바꿈 | `type`, `user`, `status`, `attempts`, `error`, `message_id`, 시각들 (TTS는 `text`, `pitch`) |
 | `user:{uuid}:train` | String | Main | 그 사용자의 최근 학습 `job_id` |
-| `job:{job_id}:result` | String (bytes) | 워커 → Main | 작업 결과 (TTS는 wav). 10분 뒤 자동 삭제 |
+| `job:{job_id}:result` | String (bytes) | 워커 → Main(`GETDEL`) | 작업 결과 (TTS는 wav). Main이 가져가면서 지움, 못 가져가면 10분 뒤 자동 삭제 |
 | `job:{job_id}:done` | List | 워커 → Main(`BLPOP`) | 최종 `success` / `fail` 신호 (재시도 중에는 없음). 10분 뒤 자동 삭제 |
 
 `status`: `queued`(Main) → `progress`(워커) → `success` / `fail`(워커)
