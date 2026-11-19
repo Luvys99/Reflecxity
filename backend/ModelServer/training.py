@@ -15,6 +15,23 @@ from command import run_command_async
 
 executor = ThreadPoolExecutor()
 
+# 학습 기본값 (요청에 값이 없으면 이 값으로 학습한다)
+DEFAULT_SAMPLE_RATE = "40000"
+DEFAULT_CPU_CORES = 4
+
+
+# 학습 전 준비: 이전 학습의 실패 표시(logs/{uuid}/fail)를 지우고, 녹음 폴더와 녹음 파일 목록을 돌려준다
+# 녹음 폴더가 없으면 FileNotFoundError
+def prepare_training(user_uuid):
+    dataset_path = os.path.join("user", user_uuid, "raw")
+    fail_file_path = os.path.join(".", "logs", user_uuid, "fail")
+    if os.path.exists(fail_file_path):
+        os.remove(fail_file_path)
+    voice_file_name = [
+        f for f in os.listdir(dataset_path) if f.endswith(".m4a") or f.endswith(".ogg") or f.endswith(".wav")
+    ]
+    return dataset_path, voice_file_name
+
 # 백그라운드 작업 함수 생성
 async def combine_audio(model_name, dataset_path, voice_file_name):
     sr = 22050
