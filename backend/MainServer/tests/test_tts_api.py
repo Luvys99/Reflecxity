@@ -22,15 +22,16 @@ def trained_user(test_redis):
     return "userA"
 
 
-def start_fake_tts_worker(test_redis, final_status, audio=FAKE_AUDIO):
+def start_fake_tts_worker(test_redis, final_status, audio=FAKE_AUDIO, leave_result_on_fail=False):
     # TTS 워커 흉내: 작업 하나를 꺼내 기록하고, 결과(성공일 때)와 끝 신호를 남긴다
+    # leave_result_on_fail: 실패인데 결과가 남아 있는 상황 (#38의 원래 상황: 이전 결과 파일이 남아 있었다)
     taken = {}
 
     def work():
         result = test_redis.xreadgroup(TTS_WORKER_GROUP, "test-worker", {tts_queue.TTS_STREAM: ">"}, count=1, block=5000)
         job_id = result[0][1][0][1]["job_id"]
         taken.update(test_redis.hgetall(f"job:{job_id}"), job_id=job_id)
-        if final_status == "success":
+        if final_status == "success" or leave_result_on_fail:
             test_redis.set(f"job:{job_id}:result", audio)
         else:
             test_redis.hset(f"job:{job_id}", "error", "모델 파일 없음")
@@ -69,14 +70,15 @@ def test_pitch를_안_보내면_기본값으로_넣는다(api, test_redis, train
     assert taken["pitch"] == str(main.DEFAULT_PITCH)
 
 
-def test_워커가_실패하면_결과_없이_500으로_답한다(api, test_redis, trained_user):
+def test_워커가_실패하면_결과가_남아_있어도_돌려주지_않고_500으로_답한다(api, test_redis, trained_user):
     # 예전에는 실패해도 남아 있던 이전 문장의 음성이 200으로 나갔다 (#38)
-    worker, _ = start_fake_tts_worker(test_redis, "fail")
+    worker, _ = start_fake_tts_worker(test_redis, "fail", leave_result_on_fail=True)
 
     response = request_tts(api, trained_user)
     worker.join()
 
     assert response.status_code == 500
+    assert response.content != FAKE_AUDIO
     assert "모델 파일 없음" in response.json()["detail"]
 
 
