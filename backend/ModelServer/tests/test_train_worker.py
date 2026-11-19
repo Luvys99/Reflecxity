@@ -1,28 +1,9 @@
-# train_worker.py가 지켜야 할 규칙을 실제 Redis(테스트용 DB 15번)로 확인한다. 학습은 가짜 함수로 바꾼다
+# train_worker.py가 지켜야 할 규칙을 실제 Redis(테스트용 DB 15번, conftest.py)로 확인한다. 학습은 가짜 함수로 바꾼다
 # 실행: cd backend/ModelServer && .venv/bin/python -m pytest tests  (Mac Redis가 켜져 있어야 함)
-import os
-
 import pytest
-import redis
 from fastapi import HTTPException
 
 import train_worker
-
-TEST_DB = 15  # 실제 작업이 있는 0번 DB를 건드리지 않는다
-
-
-@pytest.fixture
-def test_redis(monkeypatch):
-    client = redis.Redis(
-        host=os.getenv("REDIS_HOST", "127.0.0.1"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        password=os.getenv("REDIS_PASSWORD"),
-        db=TEST_DB,
-        decode_responses=True,
-    )
-    client.flushdb()
-    yield client
-    client.flushdb()
 
 
 @pytest.fixture
