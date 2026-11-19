@@ -133,3 +133,17 @@ def test_꺼냈지만_못_끝낸_작업을_새_작업보다_먼저_한다(test_r
 
     assert test_redis.hget(first, "status") == "success"
     assert test_redis.hget(second, "status") == "queued"
+
+
+def test_끝나면_성공이든_실패든_끝_신호를_남긴다(test_redis, train_job_worker, monkeypatch):
+    fake_training_results(monkeypatch, None)
+    succeeded = enqueue_train_job(test_redis, "job1")
+    train_job_worker.process_next_job()
+
+    monkeypatch.setattr(train_worker, "prepare_training", lambda user_uuid: ("raw", []))
+    failed = enqueue_train_job(test_redis, "job2")
+    train_job_worker.process_next_job()
+
+    assert test_redis.lrange(f"{succeeded}:done", 0, -1) == ["success"]
+    assert test_redis.lrange(f"{failed}:done", 0, -1) == ["fail"]
+    assert test_redis.get(f"{succeeded}:result") is None  # 학습은 돌려주는 결과가 없다
