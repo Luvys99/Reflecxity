@@ -12,14 +12,15 @@ TRAIN_WORKER_GROUP = "train-workers"
 ACTIVE_STATUSES = ("queued", "progress")  # 아직 끝나지 않은 상태
 
 
-def connect_redis():
+def connect_redis(decode_responses=True):
     # 접속 정보는 .env에서 읽는다 (REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, 테스트는 REDIS_DB=15)
+    # TTS 결과(음성 bytes)를 읽을 때는 글자로 바꾸지 않는 연결(decode_responses=False)을 쓴다
     return redis.Redis(
         host=os.getenv("REDIS_HOST", "127.0.0.1"),
         port=int(os.getenv("REDIS_PORT", "6379")),
         password=os.getenv("REDIS_PASSWORD"),
         db=int(os.getenv("REDIS_DB", "0")),
-        decode_responses=True,
+        decode_responses=decode_responses,
     )
 
 
