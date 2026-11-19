@@ -32,7 +32,9 @@
 
 ## 명령어
 - 빌드: 없음 (Python은 빌드 단계가 없고, Android 빌드는 이 저장소의 개선 범위 밖)
-- 테스트: `cd backend/ModelServer && .venv/bin/python -m pytest tests` (학습·TTS 워커 규칙, Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
+- 테스트 (Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
+  - Main: `cd backend/MainServer && .venv/bin/python -m pytest tests` (앱이 받는 학습 API 응답)
+  - Model: `cd backend/ModelServer && .venv/bin/python -m pytest tests` (학습·TTS 워커 규칙, Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
   `backend/*/test.py`는 실제 서버에 요청을 보내는 수동 스크립트라 테스트가 아닙니다 (Model 쪽은 학습까지 요청함)
 - 로컬 실행 (Mac):
   - DB·Redis: `cd backend/MainServer && docker compose up -d` (Tailscale 먼저 켜기)
@@ -41,7 +43,8 @@
   - 학습·TTS 요청은 GPU와 수 분의 시간을 씁니다. 실행 전에 물어봐 주세요.
 
 ## 구조
-- `backend/MainServer`: 앱이 부르는 API(FastAPI, 28300)와 MariaDB. Model Server와는 HTTP로만 통신하고 그 코드를 import하지 않습니다.
+- `backend/MainServer`: 앱이 부르는 API(FastAPI, 28300)와 MariaDB. Model Server의 코드를 import하지 않습니다.
+  - 학습은 `train_queue.py`가 Redis에 작업을 넣고 상태를 읽습니다 (Windows 학습 워커가 처리). 그 밖의 Model 호출은 HTTP
 - `backend/ModelServer`: 프로젝트 코드는 아래 파일뿐입니다.
   - `main.py`(FastAPI, 48000), `status.py`(사용자별 상태 파일)
   - `training.py`(학습 파이프라인), `tts.py`(모델 파일 찾기, TTS 실행), `command.py`(하위 프로세스 실행기, 학습·TTS 공용)
@@ -51,4 +54,16 @@
   - `tests/`(pytest. 실행 명령은 위 "명령어")
   `rvc_cli.py`, `uvr_cli.py`, `rvc/`, `uvr/`, `docs/`, `assets/`는 외부 rvc-cli 코드라 고치지 않습니다. 꼭 필요하면 먼저 물어봐 주세요.
 - `rvc/configs/*.json`은 실행할 때마다 바뀝니다. 커밋하지 않습니다.
+
+## Redis 키 (Main과 워커의 약속)
+Main(`MainServer/train_queue.py`)과 워커(`ModelServer/job_worker.py`, `*_worker.py`)는 서로 import하지 않고 아래 이름으로만 만납니다. 한쪽을 바꾸면 다른 쪽과 양쪽 테스트도 같이 바꿉니다.
+
+| 키 | 종류 | 쓰는 쪽 → 읽는 쪽 | 내용 |
+| --- | --- | --- | --- |
+| `stream:train` / 그룹 `train-workers` | Stream | Main(`XADD`) → 학습 워커 | 한 줄에 `job_id` |
+| `stream:tts` / 그룹 `tts-workers` | Stream | (④-2) → TTS 워커 | 한 줄에 `job_id` |
+| `job:{job_id}` | Hash | Main이 만들고 워커가 상태를 바꿈 | `type`, `user`, `status`, `attempts`, `error`, `message_id`, 시각들 (TTS는 `text`, `pitch`) |
+| `user:{uuid}:train` | String | Main | 그 사용자의 최근 학습 `job_id` |
+
+`status`: `queued`(Main) → `progress`(워커) → `success` / `fail`(워커)
 - `android/`: Java 앱. Main Server만 호출합니다.

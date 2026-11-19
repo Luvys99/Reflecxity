@@ -14,6 +14,10 @@ from dotenv import load_dotenv
 from file_manager import FileHandler
 from db_manager import DBManager
 from utils import allowed_file, generate_uuid
+from train_queue import (
+    connect_redis, create_group_if_missing, enqueue_train_job, find_train_job,
+    count_jobs_ahead, working_ms, count_train_jobs_by_status,
+)
 
 # 로그 설정: 시간과 함께 출력
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -51,12 +55,8 @@ CHUNK_SIZE = 1024 * 1024  # 1MB
 BASE_DIR = os.getcwd()
 config['FILE_PATH'] = {'base_dir': BASE_DIR}
 
-# 대기열은 서버의 이벤트 루프 안에서 만든다 (아래 startup). Python 3.9에서는 asyncio.Queue가
-# 만들어질 때의 루프에 묶여서, 서버 시작 전에 만들면 대기열이 빈 뒤 get()에서 RuntimeError가 나고
-# 대기열 처리 작업이 죽는다 (#11)
-model_queue = None
-model_tasks = {}
-model_queue_positions = []
+# Redis 연결은 서버의 이벤트 루프 안에서 만든다 (아래 startup). 비동기 연결은 처음 쓰인 루프에 묶인다
+redis_client = None
 
 db_manager = DBManager(DB_CONFIG)
 db_manager.create_table()
@@ -65,9 +65,10 @@ db_manager.create_table()
 app = FastAPI(swagger_ui_parameters={"displayRequestDuration": True})
 
 @app.on_event("startup")
-async def create_model_queue():
-    global model_queue
-    model_queue = asyncio.Queue()
+async def connect_train_queue():
+    global redis_client
+    redis_client = connect_redis()
+    await create_group_if_missing(redis_client)
 file_handler = FileHandler(DB_CONFIG, ALLOWED_EXTENSIONS, config)
 
 origins = config.get('CORS', 'origins').split(',')
@@ -81,10 +82,9 @@ app.add_middleware(
 
 MODEL_SERVER_API_URL = config.get('MODEL_SERVER', 'api_url')
 DEFAULT_PITCH = int(config.get('TTS', 'default_pitch'))
-# 학습 시간 초과와 확인 간격 (초). 측정할 때는 .env로 짧게 바꾼다
-# 기본 30분: 10분 녹음 학습이 약 4분 20초 (Windows RTX 3060, 2026-11-14 측정). 원래 값은 6시간이었다 (#11)
-MODEL_GENERATION_TIMEOUT = int(os.environ.get("MODEL_GENERATION_TIMEOUT", 1800))
-CHECK_INTERVAL = int(os.environ.get("MODEL_CHECK_INTERVAL", 60))
+# 학습 시간 초과 (초). 워커가 작업을 꺼낸 뒤 이 시간이 지나도 안 끝나면 실패로 응답한다 (워커가 죽고 다시 안 켜진 경우)
+# 기본 10분: 10분 녹음 학습이 약 4분 10초, 재시도 1번까지 하면 약 8~9분 (Windows RTX 3060). 원래 값은 6시간이었다 (#11, #42)
+MODEL_GENERATION_TIMEOUT = int(os.environ.get("MODEL_GENERATION_TIMEOUT", 600))
 
 # 요청별 로깅 미들웨어
 @app.middleware("http")
@@ -218,24 +218,25 @@ async def delete_file(user_uuid: str, filename: str):
     "/user/{user_uuid}/modelcheck",
     tags=["학습"],
     summary="학습 완료 확인",
-    description="Model Server의 `GET /user/{user_uuid}/modelcheck`를 부른다. \"모델 파일 존재\"면 완료, \"모델 생성 실패\"면 500, 그 외(\"모델 파일 없음\")는 아직 안 끝났거나 실패를 모르는 상태다 (#11).",
+    description="작업 정보(Redis `job:{id}`)의 상태로 답한다. success → \"모델 파일 존재\", fail → 500, 대기·진행 중(또는 학습 요청 없음) → \"모델 파일 없음\". 워커가 꺼낸 뒤 `MODEL_GENERATION_TIMEOUT`(기본 10분)이 지나도 안 끝나면 500 (#42).",
 )
 async def model_check(user_uuid: str):
-    try:
-        check_response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/modelcheck", timeout=10)
-        if check_response.status_code == 200:
-            message = check_response.json()["message"]
-            if message == "모델 파일 존재":
-                logging.info(f"모델 생성 완료: {user_uuid}")
-                return check_response.json()
-            elif message == "모델 생성 실패":
-                logging.error(f"모델 생성 실패: {user_uuid}")
-                raise HTTPException(status_code=500, detail="모델 생성 실패")
-            else:
-                return check_response.json()
-    except requests.exceptions.RequestException as e:
-        logging.error(f"모델 파일 확인 중 오류 발생: {e}")
-        raise HTTPException(status_code=500, detail=f"모델 파일 확인 중 오류 발생: {e}")
+    job = await find_train_job(redis_client, user_uuid)
+    if job is None or job["status"] == "queued":
+        return {"message": "모델 파일 없음"}
+    if job["status"] == "success":
+        logging.info(f"모델 생성 완료: {user_uuid}")
+        return {"message": "모델 파일 존재"}
+    if job["status"] == "fail":
+        logging.error(f"모델 생성 실패: {user_uuid}: {job.get('error', '')}")
+        raise HTTPException(status_code=500, detail="모델 생성 실패")
+
+    # progress: 워커가 너무 오래 쥐고 있으면 (죽고 다시 안 켜짐) 실패로 응답한다. 작업 정보는 바꾸지 않는다
+    elapsed_ms = await working_ms(redis_client, job)
+    if elapsed_ms is not None and elapsed_ms >= MODEL_GENERATION_TIMEOUT * 1000:
+        logging.error(f"모델 생성 시간 초과: {user_uuid}: {elapsed_ms / 1000:.0f}초")
+        raise HTTPException(status_code=500, detail="모델 생성 시간 초과")
+    return {"message": "모델 파일 없음"}
 
 
 @app.get(
@@ -267,32 +268,16 @@ async def download_file(user_uuid: str, filename: str):
     "/user/{user_uuid}/models",
     tags=["학습"],
     summary="학습 요청 (대기열에 추가)",
-    description="학습을 바로 하지 않고 Main의 대기열(메모리)에 넣는다. 대기열 처리 작업이 한 명씩 꺼내 Model Server의 `POST /models`로 보내고, 끝날 때까지 `modelcheck`로 확인한다. 같은 사용자가 이미 대기 중이면 다시 넣지 않는다.",
+    description="Redis에 작업 정보(`job:{id}`, queued)를 만들고 `stream:train`에 넣는다. Windows의 학습 워커가 꺼내 학습한다. 같은 사용자의 학습이 대기·진행 중이면 다시 넣지 않는다 (#42).",
 )
- 
-async def create_user_model(
-    user_uuid: str,
-    sample_rate: str = Form("40000"), 
-    cpu_cores: int = Form(4), 
-):
-    try:
-        if user_uuid in [p[0] for p in model_tasks] or user_uuid in model_queue_positions:
-            logging.warning(f"모델 생성 중이거나 대기열에 있음: {user_uuid}")
-            return {"message": "이미 모델 생성 요청이 진행 중이거나 대기열에 있습니다."}
-        
-        await model_queue.put((user_uuid, sample_rate, cpu_cores))
-        model_queue_positions.append(user_uuid)
-        logging.info(f"모델 생성 요청이 대기열에 추가됨: {user_uuid}")
+async def create_user_model(user_uuid: str):
+    job_id = await enqueue_train_job(redis_client, user_uuid)
+    if job_id is None:
+        logging.warning(f"모델 생성 중이거나 대기열에 있음: {user_uuid}")
+        return {"message": "이미 모델 생성 요청이 진행 중이거나 대기열에 있습니다."}
 
-        # 처리 작업이 없거나 (예상 못 한 에러로) 끝나 있으면 다시 시작한다
-        if 'queue_processor' not in model_tasks or model_tasks['queue_processor'].done():
-            model_tasks['queue_processor'] = asyncio.create_task(process_model_queue())
-
-        return {"message": "모델 생성 요청이 대기열에 추가되었습니다.", "model_id": user_uuid}
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"모델 생성 요청 中 오류 발생: {e}")
-        raise HTTPException(status_code=500, detail=f"모델 생성 요청 中 오류 발생: {e}")
+    logging.info(f"모델 생성 요청이 대기열에 추가됨: {user_uuid} (작업 {job_id})")
+    return {"message": "모델 생성 요청이 대기열에 추가되었습니다.", "model_id": user_uuid}
 
 
 # TTS 요청 처리 함수 수정 (파일 다운로드 추가)
@@ -334,100 +319,33 @@ async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: int =
         raise HTTPException(status_code=500, detail=f"TTS 요청 중 오류 발생: {e}")
 
 
-# 모델 대기열 처리 함수
-async def process_model_queue():
-    logging.info("대기열 처리 작업 시작")
-    logging.info(f"현재 대기열: {model_queue_positions}")
-
-    while True:
-        user_uuid, sample_rate, cpu_cores = await model_queue.get()
-
-        logging.info(f"큐에서 작업 가져오기: {user_uuid}")
-        logging.info(f"현재 대기열: {model_queue_positions}")
-        logging.info(f"현재 작업: {model_tasks}")
-
-        try:
-            logging.info(f"모델 생성 요청 전달: {user_uuid}")
-            response = requests.post(
-                f"{MODEL_SERVER_API_URL}/models",
-                json={"user_uuid": user_uuid, "sample_rate": sample_rate, "cpu_cores": cpu_cores},
-                timeout=MODEL_GENERATION_TIMEOUT
-            )
-
-            response.raise_for_status()
-            logging.info(f"모델 생성 요청 전달 완료: {user_uuid}")
-
-            start_time = time.time()
-            while True:
-                elapsed_time = time.time() - start_time
-                if elapsed_time >= MODEL_GENERATION_TIMEOUT:
-                    # task_done()과 대기열 정리는 finally가 한다
-                    raise TimeoutError(f"모델 생성 시간 초과: {user_uuid}")
-
-                check_response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/modelcheck", timeout=CHECK_INTERVAL)
-                if check_response.status_code == 200:
-                    message = check_response.json()["message"]
-                    if message == "모델 파일 존재":
-                        logging.info(f"모델 생성 완료: {user_uuid}")
-                        break
-                    elif message == "모델 생성 실패":
-                        logging.error(f"모델 생성 실패: {user_uuid}")
-                        break
-
-                logging.info(f"모델 생성 상태 확인 대기: {user_uuid}")
-                await asyncio.sleep(CHECK_INTERVAL)
-                logging.info(f"모델 생성 상태 확인 다시 시도: {user_uuid}")
-
-        # 한 사용자의 실패로 대기열 처리 작업이 끝나지 않도록, 로그만 남기고 다음 사용자로 넘어간다 (#11)
-        except requests.exceptions.RequestException as e:
-            logging.error(f"모델 생성 요청 중 오류 발생: {user_uuid}: {e}")
-
-        except TimeoutError as e:
-            logging.error(f"모델 생성 시간 초과: {e}")
-
-        except Exception as e:
-            logging.error(f"모델 생성 중 오류 발생: {user_uuid}: {type(e).__name__}: {e}")
-
-        finally:
-            model_queue.task_done()
-            logging.info(f"큐 작업 완료: {user_uuid}")
-            if user_uuid in model_queue_positions:
-                model_queue_positions.remove(user_uuid)
-                logging.info(f"대기열 위치 삭제: {user_uuid}")
-
 # 대기열 상태 조회 엔드포인트
 @app.get(
     "/queue_status",
     tags=["학습"],
     summary="전체 대기열 크기",
-    description="대기열에 남은 요청 수(`queue_size`)와 `model_tasks` 항목 수(`active_tasks`)를 돌려준다.",
+    description="학습 작업 중 대기(`queue_size`)와 진행(`active_tasks`) 수 (Redis 기준, #42).",
 )
 async def queue_status():
-    logging.info("대기열 상태 조회 요청")
-    queue_size = model_queue.qsize()
-    active_tasks = len(model_tasks)
-    logging.info(f"대기열 크기: {queue_size}, 활성 작업 수: {active_tasks}")
-    return {"queue_size": queue_size, "active_tasks": active_tasks}
+    counts = await count_train_jobs_by_status(redis_client)
+    logging.info(f"대기열 크기: {counts['queued']}, 진행 중: {counts['progress']}")
+    return {"queue_size": counts["queued"], "active_tasks": counts["progress"]}
 
 # 사용자 대기열 정보 조회 엔드포인트
 @app.get(
     "/user/{user_uuid}/queue",
     tags=["학습"],
     summary="내 대기열 위치",
-    description="대기 중이면 위치를 돌려준다. 학습이 시작돼 대기열에서 빠지면 \"대기열에 추가되지 않았습니다\"가 나온다 (대기 / 학습 중 / 완료 / 실패를 구분하지 못함).",
+    description="학습이 대기·진행 중이면 위치를 돌려준다: 내 앞에 끝나지 않은 작업 수 + 1 (진행 중이면 1). 앱은 1을 \"생성 중\", 2 이상을 \"대기 순번 (위치 - 1)번\"으로 보여 준다. 끝났거나 요청이 없으면 \"대기열에 추가되지 않았습니다\" (#42).",
 )
 async def get_user_queue_info(user_uuid: str):
-    logging.info(f"사용자 {user_uuid} 대기열 상태 조회 요청")
-    if user_uuid in [p[0] for p in model_tasks]:
-        logging.info(f"사용자 {user_uuid}는 모델 생성 중")
-        return {"status": "모델 생성 중"}
-    elif user_uuid in model_queue_positions:
-        position = model_queue_positions.index(user_uuid) + 1
-        logging.info(f"사용자 {user_uuid}는 대기열에 있습니다. 위치: {position}")
-        return {"status": "대기열에 있습니다.", "position": position}
-    else:
-        logging.info(f"사용자 {user_uuid}는 대기열에 추가되지 않았습니다.")
+    job = await find_train_job(redis_client, user_uuid)
+    if job is None or job["status"] not in ("queued", "progress"):
         return {"status": "대기열에 추가되지 않았습니다."}
+
+    position = await count_jobs_ahead(redis_client, job) + 1
+    logging.info(f"사용자 {user_uuid}는 대기열에 있습니다. 위치: {position}")
+    return {"status": "대기열에 있습니다.", "position": position}
 
 # 서버 온라인 상태 확인 엔드포인트
 @app.get(
