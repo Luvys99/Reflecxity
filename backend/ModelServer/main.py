@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse
 from typing import Optional
 from status import StatusManager  # status.py 임포트
 from command import run_command_async
-from training import create_model_async
+from training import create_model_async, prepare_training, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES
 
 from pydub import AudioSegment
 import asyncio  # asyncio를 임포트
@@ -211,32 +211,14 @@ async def create_model(background_tasks_model: BackgroundTasks, model_data: dict
     try:
         # 요청 데이터에서 필요한 정보 추출 (model_name 제외)
         user_uuid = model_data.get("user_uuid")
-        dataset_path = os.path.join("user", user_uuid, "raw")
-        sample_rate = model_data.get("sample_rate", "40000")
-        cpu_cores = model_data.get("cpu_cores", 4)
-        fail_file_path = os.path.join(".", "logs", user_uuid, "fail")
+        sample_rate = model_data.get("sample_rate", DEFAULT_SAMPLE_RATE)
+        cpu_cores = model_data.get("cpu_cores", DEFAULT_CPU_CORES)
         # 입력값 검증
         if not user_uuid:
             raise ValueError("user_uuid is required")
-        
-        # fail_file_path가 존재할 경우에만 삭제
-        if os.path.exists(fail_file_path):
-            os.remove(fail_file_path)
-        print("test")
-        # 모델 이름을 user_uuid 사용
-        
-        voice_file_name = [
-            f for f in os.listdir(dataset_path) if f.endswith(".m4a") or f.endswith(".ogg") or f.endswith(".wav") 
-        ]
 
-        if voice_file_name:
-            # voice_file_name에서 첫 번째 파일을 선택
-            voice_file = os.path.join(dataset_path, voice_file_name[0])
-            print("음성 파일 존재")
-        else:
-            print("음성 파일 없음")
+        dataset_path, voice_file_name = prepare_training(user_uuid)
 
-        
         model_name = user_uuid
         model_id = model_name
        
