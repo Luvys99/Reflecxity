@@ -196,25 +196,27 @@ DB 계정과 Model Server 주소처럼 컴퓨터마다 다른 값은 `backend/Ma
 ```bash
 cd backend/MainServer
 cp .env.example .env
-# .env를 열어 DB_USER, DB_PASSWORD를 채우고,
+# .env를 열어 DB_USER, DB_PASSWORD, REDIS_PASSWORD, TAILSCALE_IP를 채우고,
 # Model Server가 다른 컴퓨터면 MODEL_SERVER_URL=http://<그 컴퓨터 IP>:48000
 ```
 
-### 2. MariaDB (Docker)
+### 2. MariaDB + Redis (Docker)
 
-`.env`의 계정으로 DB를 만듭니다. 처음 실행할 때 `reflecxity` DB와 계정이 만들어지고, 테이블은 Main Server가 시작할 때 `db_schema.sql`로 만듭니다.
+`backend/MainServer/docker-compose.yml`이 `.env` 값으로 두 컨테이너를 띄웁니다. 처음 실행할 때 `reflecxity` DB와 계정이 만들어지고, 테이블은 Main Server가 시작할 때 `db_schema.sql`로 만듭니다. Redis는 학습·TTS 작업 큐로 씁니다 ([#17](../../issues/17)).
 
 ```bash
-set -a; . ./.env; set +a
-docker run -d --name reflecxity-db -p 3306:3306 \
-  -e MARIADB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" \
-  -e MARIADB_DATABASE=reflecxity \
-  -e MARIADB_USER="$DB_USER" -e MARIADB_PASSWORD="$DB_PASSWORD" \
-  -v reflecxity-db:/var/lib/mysql \
-  mariadb:11
+docker volume create reflecxity-db           # 처음 한 번만 (데이터를 컨테이너 밖에 보관)
+docker volume create reflecxity-redis-data
+docker compose up -d                         # 끄기: docker compose stop
 ```
 
-`DB_ROOT_PASSWORD`는 DB 관리용이라 `.env`에 따로 적어 둡니다 (Main Server는 쓰지 않음).
+| 컨테이너 | 열리는 주소 | 이유 |
+| --- | --- | --- |
+| `reflecxity-db` (MariaDB 11) | `127.0.0.1:3306` | Main(같은 Mac)만 쓴다 |
+| `reflecxity-redis` (Redis 7, AOF) | `127.0.0.1:6379`, `TAILSCALE_IP:6379` | Main + Tailscale로 들어오는 Windows 워커. 비밀번호 `REDIS_PASSWORD` 필요 |
+
+- **Tailscale을 먼저 켜야 합니다.** `TAILSCALE_IP` 주소가 없으면 Redis 포트를 열 수 없어 컨테이너가 뜨지 않습니다
+- `DB_ROOT_PASSWORD`는 DB 관리용이라 `.env`에 따로 적어 둡니다 (Main Server는 쓰지 않음)
 
 ### 3. Python 가상 환경과 실행
 
