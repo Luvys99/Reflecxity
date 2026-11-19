@@ -287,7 +287,7 @@ def get_user_status(user_uuid: str):
     "/tts",
     tags=["TTS"],
     summary="TTS (텍스트 → 내 목소리)",
-    description="상태를 progress로 바꾸고 백그라운드로 실행한 뒤 바로 응답한다: edge-tts로 영어 기계 음성(`temptts/temp.ogg`) → 학습한 모델(.pth, .index)로 RVC 변환 → `user/{user_uuid}/convert.wav`. 끝나면 success, 에러면 fail.",
+    description="상태를 progress로 바꾸고 백그라운드로 실행한 뒤 바로 응답한다: edge-tts로 영어 기계 음성(`temptts/{user_uuid}_{무작위}.ogg`, 요청마다 따로, 끝나면 지움) → 학습한 모델(.pth, .index)로 RVC 변환 → `user/{user_uuid}/convert.wav`. 끝나면 success, 에러면 fail.",
 )
 async def synthesize_tts(background_tasks_tts: BackgroundTasks, tts_data: dict = Body(...)):
     try:
