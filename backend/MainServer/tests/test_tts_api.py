@@ -33,7 +33,7 @@ def start_fake_tts_worker(test_redis, final_status, audio=FAKE_AUDIO, leave_resu
         taken.update(test_redis.hgetall(f"job:{job_id}"), job_id=job_id)
         if final_status == "success" or leave_result_on_fail:
             test_redis.set(f"job:{job_id}:result", audio)
-        else:
+        if final_status == "fail":
             test_redis.hset(f"job:{job_id}", "error", "모델 파일 없음")
         test_redis.hset(f"job:{job_id}", "status", final_status)
         test_redis.lpush(f"job:{job_id}:done", final_status)
