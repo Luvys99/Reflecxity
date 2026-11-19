@@ -2,40 +2,10 @@
 # 앱이 기대하는 응답: android/.../TaskStatusActivity.java
 #   /queue      → {"status", "position"}, position 1 = 학습 중, 2 이상 = 대기 순번 (position - 1)
 #   /modelcheck → 200 {"message": "모델 파일 존재"} = 완료, 200 다른 문장 = 진행 중, 500 = 실패
-# 워커는 가짜로 흉내 낸다 (Redis 명령으로 꺼내고 상태를 바꾼다). Redis는 테스트용 DB 15번
+# 워커는 가짜로 흉내 낸다 (Redis 명령으로 꺼내고 상태를 바꾼다). Redis는 테스트용 DB 15번 (conftest.py)
 # 실행: cd backend/MainServer && .venv/bin/python -m pytest tests  (Mac Redis가 켜져 있어야 함)
-import os
-
-import pytest
-import redis
-from fastapi.testclient import TestClient
-
 import main
 import train_queue
-
-TEST_DB = 15  # 실제 작업이 있는 0번 DB를 건드리지 않는다
-
-
-@pytest.fixture
-def test_redis(monkeypatch):
-    # Main은 REDIS_DB 환경 변수로 테스트 DB에 붙는다. 확인·준비는 이 동기 연결로 한다
-    monkeypatch.setenv("REDIS_DB", str(TEST_DB))
-    client = redis.Redis(
-        host=os.getenv("REDIS_HOST", "127.0.0.1"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        password=os.getenv("REDIS_PASSWORD"),
-        db=TEST_DB,
-        decode_responses=True,
-    )
-    client.flushdb()
-    yield client
-    client.flushdb()
-
-
-@pytest.fixture
-def api(test_redis):
-    with TestClient(main.app) as client:  # with 안에서 startup이 돌아 Redis에 연결한다
-        yield client
 
 
 def request_training(api, user_uuid):

@@ -2,10 +2,9 @@ import logging
 import os
 import configparser
 from typing import List
-import asyncio
 import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 import io
@@ -18,6 +17,7 @@ from train_queue import (
     connect_redis, create_group_if_missing, enqueue_train_job, find_train_job,
     count_jobs_ahead, working_ms, count_train_jobs_by_status,
 )
+from tts_queue import enqueue_tts_job, wait_for_tts_result
 
 # 로그 설정: 시간과 함께 출력
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -57,6 +57,7 @@ config['FILE_PATH'] = {'base_dir': BASE_DIR}
 
 # Redis 연결은 서버의 이벤트 루프 안에서 만든다 (아래 startup). 비동기 연결은 처음 쓰인 루프에 묶인다
 redis_client = None
+redis_binary_client = None  # TTS 결과(음성 bytes)용
 
 db_manager = DBManager(DB_CONFIG)
 db_manager.create_table()
@@ -66,8 +67,9 @@ app = FastAPI(swagger_ui_parameters={"displayRequestDuration": True})
 
 @app.on_event("startup")
 async def connect_train_queue():
-    global redis_client
+    global redis_client, redis_binary_client
     redis_client = connect_redis()
+    redis_binary_client = connect_redis(decode_responses=False)
     await create_group_if_missing(redis_client)
 file_handler = FileHandler(DB_CONFIG, ALLOWED_EXTENSIONS, config)
 
@@ -85,6 +87,8 @@ DEFAULT_PITCH = int(config.get('TTS', 'default_pitch'))
 # 학습 시간 초과 (초). 워커가 작업을 꺼낸 뒤 이 시간이 지나도 안 끝나면 실패로 응답한다 (워커가 죽고 다시 안 켜진 경우)
 # 기본 10분: 10분 녹음 학습이 약 4분 10초, 재시도 1번까지 하면 약 8~9분 (Windows RTX 3060). 원래 값은 6시간이었다 (#11, #42)
 MODEL_GENERATION_TIMEOUT = int(os.environ.get("MODEL_GENERATION_TIMEOUT", 600))
+# TTS 결과를 기다리는 최대 시간 (초). 워커 시도 3번 × 약 15~20초에 여유를 둔 값 (#38)
+TTS_WAIT_SECONDS = int(os.environ.get("TTS_WAIT_SECONDS", 90))
 
 # 요청별 로깅 미들웨어
 @app.middleware("http")
@@ -141,17 +145,6 @@ def delete_user(user_uuid: str):
     except requests.exceptions.RequestException as e:
         logging.error(f"사용자 삭제 中 오류 발생: {e}")
         raise HTTPException(status_code=500, detail=f"사용자 삭제 中 오류 발생: {e}")
-
-# TTS 상태 확인 함수 추가
-async def check_tts_status(user_uuid: str):
-    try:
-        response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/status")
-        response.raise_for_status()
-        status = response.json()
-        return status["tts"]
-    except requests.exceptions.RequestException as e:
-        logging.error(f"TTS 상태 확인 중 오류 발생: {e}")
-        return "error"
 
 @app.post(
     "/user/{user_uuid}/upload",
@@ -280,43 +273,34 @@ async def create_user_model(user_uuid: str):
     return {"message": "모델 생성 요청이 대기열에 추가되었습니다.", "model_id": user_uuid}
 
 
-# TTS 요청 처리 함수 수정 (파일 다운로드 추가)
 @app.post(
     "/user/{user_uuid}/tts",
     tags=["TTS"],
     summary="TTS (텍스트 → 내 목소리)",
-    description="Model Server의 `POST /tts`로 요청하고, `GET /user/{user_uuid}/status`가 `progress`인 동안 0.3초마다 확인한 뒤 `convert.wav`를 받아 바로 내려준다. pitch를 안 보내면 `config.ini`의 기본값(3).",
+    description="Redis에 TTS 작업(`job:{id}`)을 넣고 `stream:tts`에 번호를 넣는다. Windows의 TTS 워커가 끝 신호(`job:{id}:done`)를 줄 때까지 `BLPOP`으로 기다렸다가(최대 `TTS_WAIT_SECONDS`, 기본 90초) 결과 음성(`job:{id}:result`)을 내려준다. 빈 문장·학습이 끝나지 않은 사용자는 400, 워커 실패는 500, 시간 초과는 504. pitch를 안 보내면 `config.ini`의 기본값(3) (#38).",
 )
 async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: int = Form(DEFAULT_PITCH)):
-    try:
-        tts_data = {
-            "user_uuid": user_uuid,
-            "tts_text": tts_text,
-            "pitch" : pitch
-        }
+    # 입구 검사: 다시 해도 같은 요청은 큐에 넣지 않는다
+    if not tts_text.strip():
+        raise HTTPException(status_code=400, detail="문장이 비어 있습니다.")
+    train_job = await find_train_job(redis_client, user_uuid)
+    if train_job is None or train_job["status"] != "success":
+        raise HTTPException(status_code=400, detail="학습이 끝난 모델이 없습니다.")
 
-        response = requests.post(f"{MODEL_SERVER_API_URL}/tts", json=tts_data, timeout=60)
-        response.raise_for_status()
+    job_id = await enqueue_tts_job(redis_client, user_uuid, tts_text, pitch)
+    status, audio = await wait_for_tts_result(redis_binary_client, job_id, TTS_WAIT_SECONDS)
 
-        # 모델 서버에서 TTS 상태 확인 (await 사용)
-        print(f"테스트 확인 {await check_tts_status(user_uuid)}") 
-        while await check_tts_status(user_uuid) == "progress":  # await 사용
-            logging.info(f"TTS 진행중 ({user_uuid})...")
-            await asyncio.sleep(0.3)  # 1초 대기
+    # 실패면 결과를 받으러 가지 않는다 (예전에는 이전 문장의 음성이 나갔다, #38)
+    if status == "timeout":
+        logging.error(f"TTS 시간 초과: {user_uuid} (작업 {job_id})")
+        raise HTTPException(status_code=504, detail="TTS 시간 초과")
+    if status != "success" or audio is None:
+        error = await redis_client.hget(f"job:{job_id}", "error")
+        logging.error(f"TTS 실패: {user_uuid} (작업 {job_id}): {error}")
+        raise HTTPException(status_code=500, detail=f"TTS 실패: {error}")
 
-        # TTS 결과 파일 다운로드 
-        response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/raw/convert.wav")
-        response.raise_for_status()
-
-        m4a_data = response.content
-        m4a_file = io.BytesIO(m4a_data)
-
-        logging.info(f"TTS 생성 성공: {user_uuid}")
-        return StreamingResponse(m4a_file, media_type="audio/wav", headers={"Content-Disposition": f"attachment; filename={user_uuid}.wav"})
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"TTS 요청 중 오류 발생: {e}")
-        raise HTTPException(status_code=500, detail=f"TTS 요청 중 오류 발생: {e}")
+    logging.info(f"TTS 생성 성공: {user_uuid} (작업 {job_id})")
+    return Response(content=audio, media_type="audio/wav", headers={"Content-Disposition": f"attachment; filename={user_uuid}.wav"})
 
 
 # 대기열 상태 조회 엔드포인트
