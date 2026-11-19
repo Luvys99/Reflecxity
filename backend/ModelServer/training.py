@@ -27,10 +27,10 @@ def prepare_training(user_uuid):
     fail_file_path = os.path.join(".", "logs", user_uuid, "fail")
     if os.path.exists(fail_file_path):
         os.remove(fail_file_path)
-    voice_file_name = [
+    voice_file_names = [
         f for f in os.listdir(dataset_path) if f.endswith(".m4a") or f.endswith(".ogg") or f.endswith(".wav")
     ]
-    return dataset_path, voice_file_name
+    return dataset_path, voice_file_names
 
 # 백그라운드 작업 함수 생성
 async def combine_audio(model_name, dataset_path, voice_file_name):
