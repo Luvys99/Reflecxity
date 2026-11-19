@@ -67,3 +67,7 @@ ml_collections
 resampy>=0.4
 beartype==0.18.5
 rotary-embedding-torch==0.6.1
+
+# 학습 워커 (train_worker.py, #17)
+redis==7.0.1
+python-dotenv==1.2.1

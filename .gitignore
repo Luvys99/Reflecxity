@@ -25,5 +25,6 @@ backend/ModelServer/rvc/models/**/*.onnx
 backend/ModelServer/ffmpeg.exe
 backend/ModelServer/ffprobe.exe
 
-# Main Server 로컬 설정 (DB 비밀번호 등)
+# 로컬 설정 (DB·Redis 비밀번호 등)
 backend/MainServer/.env
+backend/ModelServer/.env
