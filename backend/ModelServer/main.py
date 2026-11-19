@@ -18,6 +18,7 @@ from typing import Optional
 from status import StatusManager  # status.py 임포트
 from command import run_command_async
 from training import create_model_async, prepare_training, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES
+from tts import find_model_files, synthesize_voice
 
 from pydub import AudioSegment
 import asyncio  # asyncio를 임포트
@@ -301,35 +302,7 @@ async def synthesize_tts(background_tasks_tts: BackgroundTasks, tts_data: dict =
         if not tts_text:
             raise ValueError("tts_text is required")
 
-        # 모델 파일 경로 찾기
-        model_dir = os.path.join(
-            ".", "logs", user_uuid
-        )  # os.path.join 사용
-
-        pth_files = [
-            f for f in os.listdir(model_dir) if f.endswith(".pth") and user_uuid in f  
-        
-        ]  # user_uuid가 포함된 파일만 추가
-
-        index_files = [
-            f
-            for f in os.listdir(model_dir)
-            if f.startswith("added_") and f.endswith(".index")
-        ]
-
-        if not pth_files:
-            raise FileNotFoundError(f"No .pth file found in {model_dir}")
-        if not index_files:
-            raise FileNotFoundError(
-                f"No 'added_*.index' file found in {model_dir}"
-            )
-
-        pth_path = os.path.join(
-            model_dir, pth_files[0]
-        )  # os.path.join 사용
-        index_path = os.path.join(
-            model_dir, index_files[0]
-        )  # os.path.join 사용
+        pth_path, index_path = find_model_files(user_uuid)
         status_manager.update_status(user_uuid=user_uuid, task="tts", value="progress")
         print("testing")
         background_tasks_tts.add_task(synthesize_tts_async, pth_path, index_path, tts_text, user_uuid, pitch)
@@ -344,59 +317,7 @@ async def synthesize_tts(background_tasks_tts: BackgroundTasks, tts_data: dict =
 
 async def synthesize_tts_async(pth_path, index_path, tts_text, user_uuid, pitch):
     try:
-        # TTS 임시 파일을 저장할 폴더가 없으면 만든다 (git은 빈 폴더를 저장하지 않아 새로 받으면 없다)
-        os.makedirs(os.path.join(".", "temptts"), exist_ok=True)
-
-        # TTS 명령어 실행
-        tts_command = [
-            sys.executable,
-            "rvc_cli.py",
-            "tts",
-            "--tts_text",
-            tts_text,
-            "--tts_voice",
-            "en-US-AndrewMultilingualNeural",
-            "--output_tts_path",
-            os.path.join(".", "temptts", "temp.ogg"),  # os.path.join 사용
-            "--output_rvc_path",
-            os.path.join(
-                ".", "user", user_uuid, "convert.wav"
-            ),  # os.path.join 사용
-            "--pth_path",
-            pth_path,
-            "--index_path",
-            index_path,
-            "--export_format",
-            "WAV",
-            "--pitch",
-            str(pitch)
-        ]
-        '''
-        # pitch.txt 파일에서 피치 값 읽기
-        pitch_file_path = os.path.join(".", "logs", user_uuid, "pitch.txt")
-        if os.path.exists(pitch_file_path):
-            with open(pitch_file_path, "r") as f:
-                pitch = int(f.read())  # 읽은 피치 값을 정수형으로 변환
-            print(f"pitch.txt에서 피치 값 {pitch}를 읽었습니다.")
-            tts_command.extend(["--pitch", str(pitch)])  # tts_command에 pitch 값 추가
-        else:
-            print(f"pitch.txt 파일이 존재하지 않습니다. 기본 피치 값을 사용합니다.")
-        '''
-        t_start = time.perf_counter()
-        await run_command_async(tts_command, user_uuid, "TTS")
-        # TTS 전체 시간 (프로세스 띄우기 ~ 끝, #15)
-        print(f"[Model {user_uuid}] [TTS 시간] 전체 {time.perf_counter() - t_start:.2f}s")
-
-        # convert.m4a 파일 경로
-        output_m4a_path = os.path.join(
-            ".", "user", user_uuid, "convert.wav"
-        )  # os.path.join 사용
-
-        # 파일 존재 확인
-        if not os.path.exists(output_m4a_path):
-            raise HTTPException(
-                status_code=500, detail="TTS wav 파일을 찾을 수 없습니다."
-            )
+        await synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path)
 
         status_manager.update_status(user_uuid=user_uuid, task="tts", value="success")
 
