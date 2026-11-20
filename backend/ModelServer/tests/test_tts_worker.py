@@ -4,7 +4,6 @@
 import os
 
 import pytest
-from fastapi import HTTPException
 
 import tts_worker
 
@@ -35,7 +34,7 @@ def fake_tts_results(monkeypatch, *results):
     # 가짜 TTS: 부를 때마다 results를 앞에서부터 하나씩 쓴다. 예외면 던지고, None이면 결과 파일에 FAKE_AUDIO를 쓴다
     calls = []
 
-    async def fake_synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path, output_path):
+    def fake_convert_text_to_voice(user_uuid, tts_text, pitch, pth_path, index_path, output_path):
         calls.append((user_uuid, tts_text, pitch, pth_path, index_path, output_path))
         result = results[len(calls) - 1]
         if result is not None:
@@ -43,7 +42,7 @@ def fake_tts_results(monkeypatch, *results):
         with open(output_path, "w") as f:
             f.write(FAKE_AUDIO)
 
-    monkeypatch.setattr(tts_worker, "synthesize_voice", fake_synthesize_voice)
+    monkeypatch.setattr(tts_worker, "convert_text_to_voice", fake_convert_text_to_voice)
     return calls
 
 
@@ -93,8 +92,8 @@ def test_문장이_없으면_바로_실패한다(test_redis, tts_job_worker, mon
 
 
 def test_결과_파일이_없으면_다시_해서_성공할_수_있다(test_redis, tts_job_worker, monkeypatch):
-    # edge-tts가 일시적으로 소리를 안 보내면 synthesize_voice가 결과 파일 없음으로 HTTPException(500)을 던진다
-    no_output = HTTPException(status_code=500, detail="TTS wav 파일을 찾을 수 없습니다.")
+    # edge-tts가 일시적으로 소리를 안 보내면 convert_text_to_voice가 결과 파일 없음으로 RuntimeError를 던진다
+    no_output = RuntimeError("TTS wav 파일을 찾을 수 없습니다.")
     calls = fake_tts_results(monkeypatch, no_output, None)
     job = enqueue_tts_job(test_redis)
 
@@ -108,7 +107,7 @@ def test_결과_파일이_없으면_다시_해서_성공할_수_있다(test_redi
 
 
 def test_세_번_모두_실패하면_재시도_뒤_실패한다(test_redis, tts_job_worker, monkeypatch):
-    no_output = HTTPException(status_code=500, detail="TTS wav 파일을 찾을 수 없습니다.")
+    no_output = RuntimeError("TTS wav 파일을 찾을 수 없습니다.")
     calls = fake_tts_results(monkeypatch, no_output, no_output, no_output)
     job = enqueue_tts_job(test_redis)
 
@@ -151,7 +150,7 @@ def test_작업마다_다른_결과_파일을_쓴다(test_redis, tts_job_worker,
 
 
 def test_재시도_중에는_끝_신호를_보내지_않는다(test_redis, tts_job_worker, monkeypatch):
-    no_output = HTTPException(status_code=500, detail="TTS wav 파일을 찾을 수 없습니다.")
+    no_output = RuntimeError("TTS wav 파일을 찾을 수 없습니다.")
     fake_tts_results(monkeypatch, no_output, None)
     job = enqueue_tts_job(test_redis)
 
