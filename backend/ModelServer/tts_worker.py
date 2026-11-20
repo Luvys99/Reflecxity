@@ -6,13 +6,12 @@ import os
 # main.py와 같은 이유 (Mac에서 RVC 변환이 멈추는 문제). torch를 import하기 전에 설정해야 한다
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
-import asyncio
 import uuid
 
 from dotenv import load_dotenv
 
 from job_worker import JobFailed, JobWorker, connect_redis
-from tts import find_model_files, synthesize_voice
+from tts import convert_text_to_voice, find_model_files
 
 # TTS 코드가 user/, logs/, rvc_cli.py를 이 폴더 기준으로 찾는다
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -38,11 +37,11 @@ def run_tts_job(job):
         raise JobFailed("모델 파일 없음")
 
     # 결과는 작업마다 다른 임시 파일에 만들고, 읽어서 돌려준 뒤 지운다 (JobWorker가 Redis에 담는다, #36)
-    # 결과 파일이 없으면(edge-tts 일시 실패 등) synthesize_voice가 HTTPException을 던진다 → 재시도 대상
+    # 결과 파일이 없으면(edge-tts 일시 실패 등) convert_text_to_voice가 RuntimeError를 던진다 → 재시도 대상
     os.makedirs("temptts", exist_ok=True)
     output_path = os.path.join("temptts", f"{user_uuid}_{uuid.uuid4().hex}.wav")
     try:
-        asyncio.run(synthesize_voice(user_uuid, job["text"], job["pitch"], pth_path, index_path, output_path))
+        convert_text_to_voice(user_uuid, job["text"], job["pitch"], pth_path, index_path, output_path)
         with open(output_path, "rb") as f:
             return f.read()
     finally:

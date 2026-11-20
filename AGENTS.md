@@ -50,7 +50,7 @@
   - `training.py`(학습 파이프라인), `tts.py`(모델 파일 찾기, TTS 실행), `command.py`(하위 프로세스 실행기, 학습·TTS 공용)
   - `job_worker.py`(워커 공통: Redis 스트림에서 꺼내기, `job:{id}` 기록, 재시도. 다시 해도 같은 실패는 `JobFailed`)
   - `train_worker.py`(학습 워커, 서버와 별개 프로세스. 학습 한 건만 하고 나머지는 `job_worker.py`, 학습 파이프라인은 `training.py`를 같이 씀)
-  - `tts_worker.py`(TTS 워커, `stream:tts`. TTS 한 건만 하고 나머지는 `job_worker.py`, TTS는 `tts.py`를 같이 씀)
+  - `tts_worker.py`(TTS 워커, `stream:tts`. TTS 한 건만 하고 나머지는 `job_worker.py`, TTS는 `tts.py`를 같이 씀). 변환은 새 프로세스 없이 워커 안에서 `rvc_cli.run_tts_script`를 부른다(`tts.convert_text_to_voice`, #49). 옛 `synthesize_voice`(새 프로세스)는 Model 서버의 옛 `/tts`만 씀
   - `tests/`(pytest. 실행 명령은 위 "명령어")
   `rvc_cli.py`, `uvr_cli.py`, `rvc/`, `uvr/`, `docs/`, `assets/`는 외부 rvc-cli 코드라 고치지 않습니다. 꼭 필요하면 먼저 물어봐 주세요.
 - `rvc/configs/*.json`은 실행할 때마다 바뀝니다. 커밋하지 않습니다.
