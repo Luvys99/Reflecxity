@@ -147,3 +147,27 @@ def test_끝나면_성공이든_실패든_끝_신호를_남긴다(test_redis, tr
     assert test_redis.lrange(f"{succeeded}:done", 0, -1) == ["success"]
     assert test_redis.lrange(f"{failed}:done", 0, -1) == ["fail"]
     assert test_redis.get(f"{succeeded}:result") is None  # 학습은 돌려주는 결과가 없다
+
+
+def test_워커_이름은_컴퓨터_이름과_번호다(test_redis):
+    import socket
+
+    assert train_worker.create_train_worker(test_redis).worker_name == f"{socket.gethostname()}-1"
+    assert train_worker.create_train_worker(test_redis, 2).worker_name == f"{socket.gethostname()}-2"
+
+
+def test_다른_번호의_워커는_남이_못_끝낸_작업을_가져가지_않는다(test_redis, train_job_worker, monkeypatch):
+    # 한 컴퓨터에 워커가 2개일 때, 1번이 학습 중인 작업을 2번이 "자기 PEL"로 꺼내 두 번 학습하면 안 된다 (#51)
+    calls = fake_training_results(monkeypatch, None)
+    working = enqueue_train_job(test_redis, "working")
+    # 1번 워커가 꺼내 학습 중이다 (XACK 전이라 1번의 PEL에 있음)
+    test_redis.xreadgroup(train_worker.TRAIN_WORKER_GROUP, train_job_worker.worker_name, {train_worker.TRAIN_STREAM: ">"}, count=1)
+    second_worker = train_worker.create_train_worker(test_redis, 2)
+    second_worker.wait_for_job_ms = 100
+
+    second_worker.process_next_job()
+
+    assert calls == []
+    assert test_redis.hget(working, "status") == "queued"  # 2번은 손대지 않았다
+    pending = test_redis.xpending_range(train_worker.TRAIN_STREAM, train_worker.TRAIN_WORKER_GROUP, "-", "+", 10)
+    assert [entry["consumer"] for entry in pending] == [train_job_worker.worker_name]
