@@ -1,5 +1,6 @@
 # 워커 공통 부분: Redis 스트림에서 작업을 꺼내고, 작업 정보 job:{job_id}에 상태를 기록한다 (#35)
 # 학습 워커(train_worker.py)와 TTS 워커가 같이 쓴다. 작업 한 건을 실제로 하는 함수(run_job)만 워커마다 다르다
+import argparse
 import os
 import socket
 import time
@@ -24,19 +25,28 @@ def connect_redis():
     )
 
 
+def read_worker_number():
+    # 실행할 때 --number로 워커 번호를 받는다 (없으면 1). 한 컴퓨터에 같은 종류의 워커를 여러 개 켤 때 쓴다 (#51)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--number", type=int, default=1, help="이 컴퓨터에서 이 워커의 번호. 다시 켤 때 같은 번호를 쓰면 못 끝낸 작업을 이어받는다")
+    return parser.parse_args().number
+
+
 def now_text():
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
 
 class JobWorker:
-    def __init__(self, redis_client, stream, group, max_attempts, run_job, wait_for_job_ms=5_000):
+    def __init__(self, redis_client, stream, group, max_attempts, run_job, worker_number=1, wait_for_job_ms=5_000):
         self.redis_client = redis_client
         self.stream = stream                    # 할 일 목록 (한 줄에 job_id 하나)
         self.group = group                      # 그룹으로 읽어야 Redis가 "누가 꺼냈고 아직 안 끝냈는지"(PEL)를 기억한다
         self.max_attempts = max_attempts        # 처음 1번 + 재시도 횟수
         self.run_job = run_job                  # 작업 한 건을 실제로 하는 함수. 작업 정보(dict)를 받고, 결과(bytes)가 있으면 돌려준다
         self.wait_for_job_ms = wait_for_job_ms  # 새 작업을 기다리는 시간. 끝나면 다시 기다린다 (Ctrl + C가 바로 먹게)
-        self.worker_name = socket.gethostname()  # 워커 이름 = 컴퓨터 이름 (누가 처리했는지 기록용)
+        # 워커 이름 = 컴퓨터 이름-번호. Redis는 이 이름으로 "누가 꺼냈고 아직 안 끝냈는지"(PEL)를 기억한다
+        # 한 컴퓨터의 워커끼리 이름이 같으면 서로의 PEL을 자기 것으로 꺼내 같은 작업을 두 번 한다 (#51)
+        self.worker_name = f"{socket.gethostname()}-{worker_number}"
 
     def create_group_if_missing(self):
         # 그룹이 없으면 만든다 (mkstream: 스트림이 없으면 같이 만든다). 이미 있으면 넘어간다

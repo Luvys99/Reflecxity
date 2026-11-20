@@ -1,5 +1,5 @@
 # TTS 워커: stream:tts에서 작업을 꺼내 문장을 내 목소리 음성으로 만들고, 결과를 job:{job_id}에 기록한다 (#17)
-# 실행: env\python.exe tts_worker.py (Model Server, 학습 워커와 별개 프로세스)
+# 실행: env\python.exe tts_worker.py [--number 2] (Model Server, 학습 워커와 별개 프로세스, 번호는 한 컴퓨터에 여러 개 켤 때, #51)
 # 꺼내기·기록·재시도는 job_worker.py, 여기는 TTS 한 건을 하는 부분만
 import os
 
@@ -10,7 +10,7 @@ import uuid
 
 from dotenv import load_dotenv
 
-from job_worker import JobFailed, JobWorker, connect_redis
+from job_worker import JobFailed, JobWorker, connect_redis, read_worker_number
 from tts import convert_text_to_voice, find_model_files
 
 # TTS 코드가 user/, logs/, rvc_cli.py를 이 폴더 기준으로 찾는다
@@ -49,9 +49,9 @@ def run_tts_job(job):
             os.remove(output_path)
 
 
-def create_tts_worker(redis_client):
-    return JobWorker(redis_client, TTS_STREAM, TTS_WORKER_GROUP, MAX_ATTEMPTS, run_tts_job)
+def create_tts_worker(redis_client, worker_number=1):
+    return JobWorker(redis_client, TTS_STREAM, TTS_WORKER_GROUP, MAX_ATTEMPTS, run_tts_job, worker_number)
 
 
 if __name__ == "__main__":
-    create_tts_worker(connect_redis()).run_forever()
+    create_tts_worker(connect_redis(), read_worker_number()).run_forever()

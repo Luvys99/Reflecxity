@@ -1,5 +1,5 @@
 # 학습 워커: stream:train에서 작업을 꺼내 학습하고, 결과를 job:{job_id}에 기록한다 (#17)
-# 실행: env\python.exe train_worker.py (Model Server와 별개 프로세스)
+# 실행: env\python.exe train_worker.py [--number 2] (Model Server와 별개 프로세스, 번호는 한 컴퓨터에 여러 개 켤 때, #51)
 # 꺼내기·기록·재시도는 job_worker.py, 여기는 학습 한 건을 하는 부분만
 import os
 
@@ -11,7 +11,7 @@ import asyncio
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-from job_worker import JobFailed, JobWorker, connect_redis
+from job_worker import JobFailed, JobWorker, connect_redis, read_worker_number
 from training import create_model_async, prepare_training, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES
 
 # 학습 코드가 user/, logs/, rvc_cli.py를 이 폴더 기준으로 찾는다
@@ -41,9 +41,9 @@ def run_train_job(job):
         raise JobFailed(e.detail)
 
 
-def create_train_worker(redis_client):
-    return JobWorker(redis_client, TRAIN_STREAM, TRAIN_WORKER_GROUP, MAX_ATTEMPTS, run_train_job)
+def create_train_worker(redis_client, worker_number=1):
+    return JobWorker(redis_client, TRAIN_STREAM, TRAIN_WORKER_GROUP, MAX_ATTEMPTS, run_train_job, worker_number)
 
 
 if __name__ == "__main__":
-    create_train_worker(connect_redis()).run_forever()
+    create_train_worker(connect_redis(), read_worker_number()).run_forever()
