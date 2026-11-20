@@ -157,3 +157,16 @@ def convert_text_to_voice(user_uuid, tts_text, pitch, pth_path, index_path, outp
 
     if not os.path.exists(output_path):
         raise RuntimeError("TTS wav 파일을 찾을 수 없습니다.")
+
+
+# TTS 워커가 작업을 받기 전에 VoiceConverter와 HuBERT를 미리 올려 둔다 (#54)
+# 안 하면 첫 요청 때 import·HuBERT 불러오기를 해서 첫 요청만 약 12초 걸린다 (#49 측정)
+# import_voice_converter는 lru_cache라 run_tts_script가 같은 객체를 쓴다.
+# load_hubert는 무엇을 불러왔는지 기록하지 않아서, last_embedder_model까지 채워야 convert_audio가 다시 불러오지 않는다
+def prepare_voice_converter():
+    from rvc_cli import import_voice_converter
+
+    embedder_model = RVC_TTS_DEFAULT_OPTIONS["embedder_model"]
+    voice_converter = import_voice_converter()
+    voice_converter.load_hubert(embedder_model, RVC_TTS_DEFAULT_OPTIONS["embedder_model_custom"])
+    voice_converter.last_embedder_model = embedder_model
