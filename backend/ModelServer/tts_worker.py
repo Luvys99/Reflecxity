@@ -6,12 +6,13 @@ import os
 # main.py와 같은 이유 (Mac에서 RVC 변환이 멈추는 문제). torch를 import하기 전에 설정해야 한다
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
+import time
 import uuid
 
 from dotenv import load_dotenv
 
 from job_worker import JobFailed, JobWorker, connect_redis, read_worker_number
-from tts import convert_text_to_voice, find_model_files
+from tts import convert_text_to_voice, find_model_files, prepare_voice_converter
 
 # TTS 코드가 user/, logs/, rvc_cli.py를 이 폴더 기준으로 찾는다
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -54,4 +55,9 @@ def create_tts_worker(redis_client, worker_number=1):
 
 
 if __name__ == "__main__":
-    create_tts_worker(connect_redis(), read_worker_number()).run_forever()
+    job_worker = create_tts_worker(connect_redis(), read_worker_number())
+    # 작업을 받기 전에 모델을 미리 올려 둔다. 테스트는 이 부분을 지나지 않아 가볍다 (#54)
+    t_start = time.perf_counter()
+    prepare_voice_converter()
+    print(f"[{job_worker.worker_name}] TTS 준비 완료 {time.perf_counter() - t_start:.2f}s", flush=True)
+    job_worker.run_forever()

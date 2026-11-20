@@ -70,3 +70,24 @@ def test_요청마다_다른_기계_음성_임시_파일을_쓴다(fake_rvc_cli)
     tts.convert_text_to_voice("user1", "Hello", 3, "model.pth", "added_model.index", "out2.wav")
 
     assert fake_rvc_cli.calls[0]["output_tts_path"] != fake_rvc_cli.calls[1]["output_tts_path"]
+
+
+class FakeVoiceConverter:
+    def __init__(self):
+        self.loaded_embedders = []
+        self.last_embedder_model = None
+
+    def load_hubert(self, embedder_model, embedder_model_custom=None):
+        self.loaded_embedders.append((embedder_model, embedder_model_custom))
+
+
+def test_미리_준비하면_변환에_쓸_HuBERT를_불러오고_불러온_것을_기록한다(fake_rvc_cli):
+    # convert_audio는 last_embedder_model이 쓸 embedder_model과 다르면 HuBERT를 다시 불러온다 (rvc/infer/infer.py)
+    voice_converter = FakeVoiceConverter()
+    fake_rvc_cli.import_voice_converter = lambda: voice_converter
+
+    tts.prepare_voice_converter()
+
+    embedder_model = tts.RVC_TTS_DEFAULT_OPTIONS["embedder_model"]
+    assert voice_converter.loaded_embedders == [(embedder_model, tts.RVC_TTS_DEFAULT_OPTIONS["embedder_model_custom"])]
+    assert voice_converter.last_embedder_model == embedder_model
