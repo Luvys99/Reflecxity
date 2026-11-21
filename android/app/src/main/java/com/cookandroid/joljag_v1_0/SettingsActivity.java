@@ -27,10 +27,10 @@ public class SettingsActivity extends AppCompatActivity {
     // 서버가 자동 피치를 −12 ~ +12로 제한한다 (#59). 직접 조절도 같은 범위
     private static final int MAX_PITCH = 12;
 
-    public View button_retrain;
-    public View button_data_transfer;
-    public View device_erase;
-    public View pitch_setting;
+    public View buttonRetrain;
+    public View buttonDataTransfer;
+    public View deviceErase;
+    public View pitchSetting;
     private TextView txtPitchValue;
     private SharedPreferences sharedPreferences;
 
@@ -42,21 +42,21 @@ public class SettingsActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.settings_toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        button_retrain = findViewById(R.id.button_retrain);
-        button_data_transfer = findViewById(R.id.button_data_transfer);
-        device_erase = findViewById(R.id.device_erase);
-        pitch_setting = findViewById(R.id.pitch_setting);
+        buttonRetrain = findViewById(R.id.button_retrain);
+        buttonDataTransfer = findViewById(R.id.button_data_transfer);
+        deviceErase = findViewById(R.id.device_erase);
+        pitchSetting = findViewById(R.id.pitch_setting);
         txtPitchValue = findViewById(R.id.txt_pitch_value);
 
         ((TextView) findViewById(R.id.txt_version)).setText(getString(R.string.settings_version, BuildConfig.VERSION_NAME));
         findViewById(R.id.button_terms).setOnClickListener(v -> showTerms());
 
-        button_retrain.setOnClickListener(v -> {
+        buttonRetrain.setOnClickListener(v -> {
             Intent intent = new Intent(SettingsActivity.this, RetrainActivity.class);
             startActivity(intent);
         });
 
-        button_data_transfer.setOnClickListener(v -> {
+        buttonDataTransfer.setOnClickListener(v -> {
             Intent intent = new Intent(SettingsActivity.this, DataTransferActivity.class);
             startActivity(intent);
         });
@@ -64,7 +64,7 @@ public class SettingsActivity extends AppCompatActivity {
         sharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
         String uuid = sharedPreferences.getString("UUID", null);
 
-        device_erase.setOnClickListener(v -> {
+        deviceErase.setOnClickListener(v -> {
             if (uuid == null) {
                 Snackbar.make(findViewById(R.id.layout), R.string.settings_no_user, Snackbar.LENGTH_SHORT).setAction(R.string.ok, view -> {}).show();
                 return;
@@ -91,7 +91,7 @@ public class SettingsActivity extends AppCompatActivity {
                     .show();
         });
 
-        pitch_setting.setOnClickListener(v -> showPitchDialog(this, sharedPreferences, this::showPitchValue));
+        pitchSetting.setOnClickListener(v -> showPitchDialog(this, sharedPreferences, this::showPitchValue));
         showPitchValue();
     }
 

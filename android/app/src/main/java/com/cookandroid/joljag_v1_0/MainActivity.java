@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView selectTv2;
     private TextView targetTv;
     private TextView targetTv2;
-    private TextView ttsstart_guide;
+    private TextView ttsStartGuide;
     private Button recognizeButton;
     private View tts;
     private ImageButton switchLanguage;
@@ -66,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
     private final Handler debounceHandler = new Handler(Looper.getMainLooper());
     private Runnable debounceRunnable;
 
-    private ProgressBar progressBar_ttsloading;
+    private ProgressBar progressBarTtsLoading;
 
     private boolean isKoreanToEnglish = true; // 한국어 -> 영어 여부 상태
     private boolean isListening = false;  // 음성 인식 중인지 여부
@@ -74,17 +74,17 @@ public class MainActivity extends AppCompatActivity {
     private File cachedTtsFile; // 캐시된 TTS 파일을 저장할 변수
     private String targetLanguage = "en"; // 영어
     private String previousTtsText = ""; // 이전 TTS 텍스트를 저장할 변수
-    private String tts_text;
+    private String ttsText;
     private String uuid;
-    private String cache_text_translated;
-    private int tts_pitch;
+    private String cacheTextTranslated;
+    private int ttsPitch;
     private int previousPitch = 0;
-    private boolean isFirst_tts;
+    private boolean isFirstTts;
 
     private MediaPlayer mediaPlayer;
 
-    private static final String GoogleAPI_KEY = BuildConfig.GoogleAPI_KEY;
-    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL + "/users/";
+    private static final String GOOGLE_API_KEY = BuildConfig.GOOGLE_API_KEY;
+    private static final String USERS_URL = BuildConfig.MAIN_API_URL + "/users/";
     private static final int REQUEST_AUDIO_PERMISSION_CODE = 200;
 
     @Override
@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
         boolean isUserCreated = sharedPreferences.getBoolean("isUserCreated", false);
         boolean isTermConfirm = sharedPreferences.getBoolean("isTermConfirm", false);
 
-        isFirst_tts = sharedPreferences.getBoolean("isFirst_tts", true);
+        isFirstTts = sharedPreferences.getBoolean("isFirst_tts", true);
 
         if (isFirstRun && !isUserCreated && !isTermConfirm) {
             // 앱이 처음 실행된 적이 없고, UUID가 없는 경우 IntroActivity로 이동
@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Toolbar 설정
         Toolbar toolbar = findViewById(R.id.custom_toolbar);
-        ImageView toolbar_title = findViewById(R.id.toolbar_title);
+        ImageView toolbarTitle = findViewById(R.id.toolbar_title);
         setSupportActionBar(toolbar);
 
         // 앱 이름 중앙 정렬
@@ -142,9 +142,9 @@ public class MainActivity extends AppCompatActivity {
         selectTv2 = findViewById(R.id.selectTv2);
         targetTv = findViewById(R.id.targetTv1);
         targetTv2 = findViewById(R.id.targetTv2);
-        ttsstart_guide = findViewById(R.id.ttsstart_guide);
+        ttsStartGuide = findViewById(R.id.ttsstart_guide);
         tts = findViewById(R.id.tts);
-        progressBar_ttsloading = findViewById(R.id.progressBar_ttsloading);
+        progressBarTtsLoading = findViewById(R.id.progressBar_ttsloading);
         recognizeButton = findViewById(R.id.recognizeButton);
         switchLanguage = findViewById(R.id.switchLanguage);
 
@@ -153,10 +153,10 @@ public class MainActivity extends AppCompatActivity {
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR"); // STT 기본값으로 한국어 설정
 
-        Animation switch_anim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.switch_anim);
+        Animation switchAnim = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.switch_anim);
 
-        if (!isFirst_tts) {
-            ttsstart_guide.setVisibility(View.GONE);
+        if (!isFirstTts) {
+            ttsStartGuide.setVisibility(View.GONE);
         }
 
         // 버튼 클릭 시 음성 인식 시작
@@ -175,21 +175,21 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 uuid = sharedPreferences.getString("UUID", null);
-                tts_text = translatedText.getText().toString();
-                tts_pitch = sharedPreferences.getInt("tts_pitch", SettingsActivity.PITCH_NOT_SET);
+                ttsText = translatedText.getText().toString();
+                ttsPitch = sharedPreferences.getInt("tts_pitch", SettingsActivity.PITCH_NOT_SET);
 
-                if (tts_text != null && !tts_text.trim().isEmpty()) {
-                    if (tts_text.equals(previousTtsText) && cachedTtsFile != null && cachedTtsFile.exists() && tts_pitch == previousPitch) {
+                if (ttsText != null && !ttsText.trim().isEmpty()) {
+                    if (ttsText.equals(previousTtsText) && cachedTtsFile != null && cachedTtsFile.exists() && ttsPitch == previousPitch) {
                         // 텍스트가 이전과 같고 캐시된 파일이 있다면 재생
                         playTTS(cachedTtsFile);
                         Log.d("TTS Module", "Play Cached TTS");
                     } else {
                         // 텍스트가 변경되었거나 캐시된 파일이 없으면 새로 요청
-                        previousTtsText = tts_text; // 이전 텍스트 업데이트
-                        previousPitch = tts_pitch;
+                        previousTtsText = ttsText; // 이전 텍스트 업데이트
+                        previousPitch = ttsPitch;
                         tts.setVisibility(View.GONE); // 버튼 비활성화
-                        progressBar_ttsloading.setVisibility(View.VISIBLE);
-                        requestTTS(uuid, tts_text, tts_pitch);
+                        progressBarTtsLoading.setVisibility(View.VISIBLE);
+                        requestTTS(uuid, ttsText, ttsPitch);
                         Log.d("TTS Module", "request TTS");
                     }
                 } else {
@@ -200,8 +200,8 @@ public class MainActivity extends AppCompatActivity {
 
         // 번역 언어 전환 버튼 클릭 리스너
         switchLanguage.setOnClickListener(v -> {
-            switchLanguage.startAnimation(switch_anim);
-            inputText.setText(cache_text_translated);
+            switchLanguage.startAnimation(switchAnim);
+            inputText.setText(cacheTextTranslated);
             if (isKoreanToEnglish) {
                 targetLanguage = "ko"; // 한국어로 번역
                 selectTv.setText(R.string.eng);
@@ -381,7 +381,7 @@ private void translateText(String originalText) {
     TranslationService service = retrofit.create(TranslationService.class);
     TranslationRequest request = new TranslationRequest(Collections.singletonList(originalText), targetLanguage);
 
-    Call<TranslationResponse> call = service.translateText(GoogleAPI_KEY, request);
+    Call<TranslationResponse> call = service.translateText(GOOGLE_API_KEY, request);
     call.enqueue(new Callback<TranslationResponse>() {
         @Override
         public void onResponse(Call<TranslationResponse> call, Response<TranslationResponse> response) {
@@ -389,7 +389,7 @@ private void translateText(String originalText) {
                 String translated = response.body().getData().getTranslations().get(0).getTranslatedText();
                 translated = Html.fromHtml(translated).toString();
                 translatedText.setText(translated);
-                cache_text_translated = translated;
+                cacheTextTranslated = translated;
             } else {
                 Log.e("TranslateError", "Translation failed: " + response.message());
             }
@@ -501,7 +501,7 @@ private void translateText(String originalText) {
         }
     }
 
-    private void requestTTS(String userUuid, String tts_text, int tts_pitch) {
+    private void requestTTS(String userUuid, String ttsText, int ttsPitch) {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
@@ -510,16 +510,16 @@ private void translateText(String originalText) {
 
         // FormBody를 사용하여 데이터를 보내기 위한 준비
         FormBody.Builder formBuilder = new FormBody.Builder()
-                .add("tts_text", tts_text);
+                .add("tts_text", ttsText);
         // 피치를 저장한 적이 없으면 보내지 않는다 → 서버가 자동 피치를 쓴다 (#72)
-        if (tts_pitch != SettingsActivity.PITCH_NOT_SET) {
-            formBuilder.add("pitch", String.valueOf(tts_pitch));
+        if (ttsPitch != SettingsActivity.PITCH_NOT_SET) {
+            formBuilder.add("pitch", String.valueOf(ttsPitch));
         }
         RequestBody requestBody = formBuilder.build();
 
         // 요청 생성
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/tts")
+                .url(USERS_URL + userUuid + "/tts")
                 .post(requestBody) // JSON 대신 Form 데이터 전송
                 .build();
 
@@ -529,7 +529,7 @@ private void translateText(String originalText) {
                 e.printStackTrace();
                 runOnUiThread(() -> {
                     tts.setVisibility(View.VISIBLE); // 버튼 활성화
-                    progressBar_ttsloading.setVisibility(View.GONE);
+                    progressBarTtsLoading.setVisibility(View.GONE);
                     showErrorSnackbar(findViewById(R.id.full));
                     Log.e("TTS Module", "1번 오류");
                 });
@@ -541,7 +541,7 @@ private void translateText(String originalText) {
                     String errorMessage = response.body().string();
                     runOnUiThread(() -> {
                         tts.setVisibility(View.VISIBLE); // 버튼 활성화
-                        progressBar_ttsloading.setVisibility(View.GONE);
+                        progressBarTtsLoading.setVisibility(View.GONE);
                         showErrorSnackbar(findViewById(R.id.full));
                         Log.e("TTS Module", "2번 오류");
                     });
@@ -560,13 +560,13 @@ private void translateText(String originalText) {
                         runOnUiThread(() -> {
                             playTTS(outputFile);
                             tts.setVisibility(View.VISIBLE); // 버튼 활성화
-                            progressBar_ttsloading.setVisibility(View.GONE);
+                            progressBarTtsLoading.setVisibility(View.GONE);
                         });
                     } catch (IOException e) {
                         e.printStackTrace();
                         runOnUiThread(() -> {
                             tts.setVisibility(View.VISIBLE); // 버튼 활성화
-                            progressBar_ttsloading.setVisibility(View.GONE);
+                            progressBarTtsLoading.setVisibility(View.GONE);
                             showErrorSnackbar(findViewById(R.id.full));
                             Log.e("TTS Module", "3번 오류");
                         });
@@ -595,13 +595,13 @@ private void translateText(String originalText) {
             mediaPlayer.setOnCompletionListener(mp -> {
                 mp.release();
                 mediaPlayer = null; // 해제 후 null로 설정
-                if(isFirst_tts){
-                    ttsstart_guide.setVisibility(View.GONE);
+                if(isFirstTts){
+                    ttsStartGuide.setVisibility(View.GONE);
                     // 목소리 높이는 자동이라 처음 들은 뒤 높낮이 창을 띄우지 않는다 (#84)
-                    isFirst_tts = false;
+                    isFirstTts = false;
 
                     SharedPreferences.Editor editor = sharedPreferences.edit();
-                    editor.putBoolean("isFirst_tts", isFirst_tts);
+                    editor.putBoolean("isFirst_tts", isFirstTts);
                     editor.apply();
                 }
             });

@@ -41,23 +41,23 @@ import okhttp3.*;
 
 public class TaskStatusActivity extends AppCompatActivity {
 
-    private TextView info_title;
-    private TextView info_txt;
+    private TextView infoTitle;
+    private TextView infoText;
     private TextView userCreationStatus;
     private TextView fileUploadStatus;
     private TextView modelCreationRequest;
     private TextView modelCreationStatus;
     private Button homeButton;
     private Button nextButton;
-    private ProgressBar progressBar_creationStatus;
-    private ProgressBar progressBar_uploadStatus;
-    private ProgressBar progressBar_modelRequest;
-    private ProgressBar progressBar_modelStatus;
-    private ImageView status_icon;
-    private ImageView imageView_creationStatus;
-    private ImageView imageView_uploadStatus;
-    private ImageView imageView_modelRequest;
-    private ImageView imageView_modelStatus;
+    private ProgressBar progressBarCreationStatus;
+    private ProgressBar progressBarUploadStatus;
+    private ProgressBar progressBarModelRequest;
+    private ProgressBar progressBarModelStatus;
+    private ImageView statusIcon;
+    private ImageView imageViewCreationStatus;
+    private ImageView imageViewUploadStatus;
+    private ImageView imageViewModelRequest;
+    private ImageView imageViewModelStatus;
 
     String uuid;
     private boolean isUserCreated;
@@ -66,7 +66,7 @@ public class TaskStatusActivity extends AppCompatActivity {
     private boolean isModelCreated;
     private boolean isPushCreated;
     private boolean isMainEntryTime;
-    private boolean server_status_main = false;
+    private boolean isMainServerOnline = false;
 
     // 남은 시간 (#93)
     private CircularProgressIndicator progressRing;
@@ -81,11 +81,11 @@ public class TaskStatusActivity extends AppCompatActivity {
     private int jobsAhead;
     private final Handler etaHandler = new Handler();
     private Runnable etaTicker;
-    private boolean server_status_model = false;
+    private boolean isModelServerOnline = false;
 
-    private static final String MainAPI_URL = BuildConfig.MainAPI_URL;
-    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online";
-    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL + "/users/";
+    private static final String MAIN_API_URL = BuildConfig.MAIN_API_URL;
+    private static final String ONLINE_CHECK_URL = MAIN_API_URL + "/online";
+    private static final String USERS_URL = BuildConfig.MAIN_API_URL + "/users/";
     private static final String CHANNEL_ID = "notification_channel";
 
     @Override
@@ -101,34 +101,34 @@ public class TaskStatusActivity extends AppCompatActivity {
         isModelCreated = sharedPreferences.getBoolean("isModelCreated", false);
         isPushCreated = sharedPreferences.getBoolean("isPushCreated", false);
 
-        info_title = findViewById(R.id.info_title);
-        info_txt = findViewById(R.id.info_txt);
+        infoTitle = findViewById(R.id.info_title);
+        infoText = findViewById(R.id.info_txt);
         userCreationStatus = findViewById(R.id.user_creation_status);
         fileUploadStatus = findViewById(R.id.file_upload_status);
         modelCreationRequest = findViewById(R.id.model_creation_request);
         modelCreationStatus = findViewById(R.id.model_creation_status);
         homeButton = findViewById(R.id.home_button);
         nextButton = findViewById(R.id.next_button);
-        progressBar_creationStatus = findViewById(R.id.progressBar_creationStatus);
-        progressBar_uploadStatus = findViewById(R.id.progressBar_uploadStatus);
-        progressBar_modelRequest = findViewById(R.id.progressBar_modelRequest);
-        progressBar_modelStatus = findViewById(R.id.progressBar_modelStatus);
-        status_icon = findViewById(R.id.status_icon);
-        imageView_creationStatus = findViewById(R.id.imageView_creationStatus);
-        imageView_uploadStatus = findViewById(R.id.imageView_uploadStatus);
-        imageView_modelRequest = findViewById(R.id.imageView_modelRequest);
-        imageView_modelStatus = findViewById(R.id.imageView_modelStatus);
+        progressBarCreationStatus = findViewById(R.id.progressBar_creationStatus);
+        progressBarUploadStatus = findViewById(R.id.progressBar_uploadStatus);
+        progressBarModelRequest = findViewById(R.id.progressBar_modelRequest);
+        progressBarModelStatus = findViewById(R.id.progressBar_modelStatus);
+        statusIcon = findViewById(R.id.status_icon);
+        imageViewCreationStatus = findViewById(R.id.imageView_creationStatus);
+        imageViewUploadStatus = findViewById(R.id.imageView_uploadStatus);
+        imageViewModelRequest = findViewById(R.id.imageView_modelRequest);
+        imageViewModelStatus = findViewById(R.id.imageView_modelStatus);
 
         homeButton.setVisibility(View.GONE);
         nextButton.setVisibility(View.GONE);
-        progressBar_creationStatus.setVisibility(View.VISIBLE);
-        imageView_creationStatus.setVisibility(View.GONE);
-        progressBar_uploadStatus.setVisibility(View.VISIBLE);
-        imageView_uploadStatus.setVisibility(View.GONE);
-        progressBar_modelRequest.setVisibility(View.VISIBLE);
-        imageView_modelRequest.setVisibility(View.GONE);
-        progressBar_modelStatus.setVisibility(View.VISIBLE);
-        imageView_modelStatus.setVisibility(View.GONE);
+        progressBarCreationStatus.setVisibility(View.VISIBLE);
+        imageViewCreationStatus.setVisibility(View.GONE);
+        progressBarUploadStatus.setVisibility(View.VISIBLE);
+        imageViewUploadStatus.setVisibility(View.GONE);
+        progressBarModelRequest.setVisibility(View.VISIBLE);
+        imageViewModelRequest.setVisibility(View.GONE);
+        progressBarModelStatus.setVisibility(View.VISIBLE);
+        imageViewModelStatus.setVisibility(View.GONE);
 
         // 남은 시간: 녹음 길이로 예상 학습 시간을 구해 둔다 (#93)
         progressRing = findViewById(R.id.progress_ring);
@@ -152,7 +152,7 @@ public class TaskStatusActivity extends AppCompatActivity {
             finish();
 
             checkServerStatus(() -> {
-                if (server_status_main && server_status_model) {
+                if (isMainServerOnline && isModelServerOnline) {
                     // 서버에서 사용자 삭제 요청
                     deleteUserFromServer(userUUID);
 
@@ -203,29 +203,29 @@ public class TaskStatusActivity extends AppCompatActivity {
         if (isUserCreated) {
             runOnUiThread(() -> {
                 userCreationStatus.setText(R.string.step_prepare);
-                progressBar_creationStatus.setVisibility(View.GONE);
-                imageView_creationStatus.setVisibility(View.VISIBLE);
+                progressBarCreationStatus.setVisibility(View.GONE);
+                imageViewCreationStatus.setVisibility(View.VISIBLE);
             });
         }
         if (isFilesUploaded) {
             runOnUiThread(() -> {
                 fileUploadStatus.setText(R.string.step_upload);
-                progressBar_uploadStatus.setVisibility(View.GONE);
-                imageView_uploadStatus.setVisibility(View.VISIBLE);
+                progressBarUploadStatus.setVisibility(View.GONE);
+                imageViewUploadStatus.setVisibility(View.VISIBLE);
             });
         }
         if (isModelRequest) {
             runOnUiThread(() -> {
                 modelCreationRequest.setText(R.string.step_request);
-                progressBar_modelRequest.setVisibility(View.GONE);
-                imageView_modelRequest.setVisibility(View.VISIBLE);
+                progressBarModelRequest.setVisibility(View.GONE);
+                imageViewModelRequest.setVisibility(View.VISIBLE);
             });
         }
         if (isModelCreated) {
             runOnUiThread(() -> {
                 modelCreationStatus.setText(R.string.step_train);
-                progressBar_modelStatus.setVisibility(View.GONE);
-                imageView_modelStatus.setVisibility(View.VISIBLE);
+                progressBarModelStatus.setVisibility(View.GONE);
+                imageViewModelStatus.setVisibility(View.VISIBLE);
             });
         }
     }
@@ -248,7 +248,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                 .build();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL + "/users")
+                .url(MAIN_API_URL + "/users")
                 .post(RequestBody.create("", null)) // 빈 POST 요청
                 .build();
 
@@ -277,8 +277,8 @@ public class TaskStatusActivity extends AppCompatActivity {
 
                         runOnUiThread(() -> {
                             userCreationStatus.setText(R.string.step_prepare);
-                            progressBar_creationStatus.setVisibility(View.GONE);
-                            imageView_creationStatus.setVisibility(View.VISIBLE);
+                            progressBarCreationStatus.setVisibility(View.GONE);
+                            imageViewCreationStatus.setVisibility(View.VISIBLE);
                             listener.onUserCreated(userUuid);
                         });
 
@@ -302,7 +302,7 @@ public class TaskStatusActivity extends AppCompatActivity {
 
         // 요청 생성 (DELETE 요청)
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUUID)
+                .url(USERS_URL + userUUID)
                 .delete()
                 .build();
 
@@ -353,7 +353,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                 .build();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_OnlineCheck)
+                .url(ONLINE_CHECK_URL)
                 .get()
                 .build();
 
@@ -371,18 +371,18 @@ public class TaskStatusActivity extends AppCompatActivity {
                         String responseBodyString = responseBody.string();
                         JSONObject jsonResponse = new JSONObject(responseBodyString);
                         String status = jsonResponse.getString("status");
-                        Boolean model_server = jsonResponse.getBoolean("model_server");
+                        Boolean modelServer = jsonResponse.getBoolean("model_server");
 
                         runOnUiThread(() -> {
                             if ("online".equals(status)) {
-                                server_status_main = true;
-                                server_status_model = model_server;
+                                isMainServerOnline = true;
+                                isModelServerOnline = modelServer;
                             } else {
-                                server_status_main = false;
+                                isMainServerOnline = false;
                             }
 
                             // 서버 상태 확인 후 성공 시 콜백 실행
-                            if (server_status_main && server_status_model) {
+                            if (isMainServerOnline && isModelServerOnline) {
                                 onSuccess.run();
                             } else {
                                 showErrorSnackbar(findViewById(R.id.layout));
@@ -426,8 +426,8 @@ public class TaskStatusActivity extends AppCompatActivity {
                 editor.apply();
 
                 runOnUiThread(() -> fileUploadStatus.setText(R.string.step_upload));
-                progressBar_uploadStatus.setVisibility(View.GONE);
-                imageView_uploadStatus.setVisibility(View.VISIBLE);
+                progressBarUploadStatus.setVisibility(View.GONE);
+                imageViewUploadStatus.setVisibility(View.VISIBLE);
                 checkIfAllTasksCompleted(userUuid);
             });
         }
@@ -471,7 +471,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                 .build();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/recordings")
+                .url(USERS_URL + userUuid + "/recordings")
                 .post(requestBody)
                 .build();
 
@@ -502,10 +502,10 @@ public class TaskStatusActivity extends AppCompatActivity {
 
 
 
-    private void createModel(String userUuid) {
+    private void requestTraining(String userUuid) {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/training")
+                .url(USERS_URL + userUuid + "/training")
                 .post(RequestBody.create("", null)) // 빈 POST 요청
                 .build();
 
@@ -529,8 +529,8 @@ public class TaskStatusActivity extends AppCompatActivity {
 
                         runOnUiThread(() -> {
                             modelCreationRequest.setText(R.string.step_request);
-                            progressBar_modelRequest.setVisibility(View.GONE);
-                            imageView_modelRequest.setVisibility(View.VISIBLE);
+                            progressBarModelRequest.setVisibility(View.GONE);
+                            imageViewModelRequest.setVisibility(View.VISIBLE);
                         });
                         checkIfAllTasksCompleted(userUuid);
                     });
@@ -605,22 +605,22 @@ public class TaskStatusActivity extends AppCompatActivity {
         progressRing.setVisibility(View.GONE);
         etaBox.setVisibility(View.GONE);
         tipsBox.setVisibility(View.GONE);
-        status_icon.setImageResource(iconRes);
-        status_icon.setColorFilter(ContextCompat.getColor(this, tintRes));
-        status_icon.setVisibility(View.VISIBLE);
+        statusIcon.setImageResource(iconRes);
+        statusIcon.setColorFilter(ContextCompat.getColor(this, tintRes));
+        statusIcon.setVisibility(View.VISIBLE);
     }
 
-    private void checkModelPeriodically(String userUuid) {
+    private void checkTrainingLater(String userUuid) {
         Handler handler = new Handler();
-        handler.postDelayed(() -> checkModel(userUuid), 10000); // 10초마다 모델 상태를 다시 확인 (학습이 약 5분이라 30초는 늦었다, #93)
+        handler.postDelayed(() -> checkTraining(userUuid), 10000); // 10초마다 모델 상태를 다시 확인 (학습이 약 5분이라 30초는 늦었다, #93)
     }
 
     // 학습 상태를 한 번에 묻는다 (#63): status 값으로 대기·학습 중·완료·실패를 나눈다
-    private void checkModel(String userUuid) {
+    private void checkTraining(String userUuid) {
         OkHttpClient client = new OkHttpClient();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/training")
+                .url(USERS_URL + userUuid + "/training")
                 .get()
                 .build();
 
@@ -655,8 +655,8 @@ public class TaskStatusActivity extends AppCompatActivity {
                                 saveMainEntryTime(); // 진입 시간 저장
 
                                 modelCreationStatus.setText(R.string.step_train);
-                                progressBar_modelStatus.setVisibility(View.GONE);
-                                imageView_modelStatus.setVisibility(View.VISIBLE);
+                                progressBarModelStatus.setVisibility(View.GONE);
+                                imageViewModelStatus.setVisibility(View.VISIBLE);
                                 checkIfAllTasksCompleted(userUuid);
                             });
                         } else if ("queued".equals(status) || "progress".equals(status)) {
@@ -669,7 +669,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                                     modelCreationStatus.setText(getString(R.string.step_train_wait, position - 1));
                                     showWaiting(position - 1);
                                 }
-                                checkModelPeriodically(userUuid); // 끝날 때까지 다시 확인
+                                checkTrainingLater(userUuid); // 끝날 때까지 다시 확인
                             });
                         } else {
                             // fail, 또는 학습 요청이 사라짐(none): 처음부터 다시 해야 한다
@@ -690,14 +690,14 @@ public class TaskStatusActivity extends AppCompatActivity {
 
     private void showTrainingFailed() {
         showFinished(R.drawable.cloud_alert, R.color.danger);
-        info_title.setText(R.string.training_fail_title);
-        info_txt.setText(getString(R.string.learning_error));
+        infoTitle.setText(R.string.training_fail_title);
+        infoText.setText(getString(R.string.learning_error));
         modelCreationStatus.setText(R.string.step_train_fail);
-        progressBar_modelStatus.setVisibility(View.GONE);
+        progressBarModelStatus.setVisibility(View.GONE);
         homeButton.setVisibility(View.VISIBLE);
         nextButton.setVisibility(View.GONE);
 
-        imageView_modelStatus.setVisibility(View.VISIBLE);
+        imageViewModelStatus.setVisibility(View.VISIBLE);
         showModelErrorSnackbar(findViewById(R.id.layout));
 
         Intent serviceIntent = new Intent(TaskStatusActivity.this, TaskCheckService.class);
@@ -779,8 +779,8 @@ public class TaskStatusActivity extends AppCompatActivity {
         if (isUserCreated && isFilesUploaded && isModelRequest && isModelCreated) {
             runOnUiThread(() -> {
                 showFinished(R.drawable.check_circle, R.color.success);
-                info_title.setText(R.string.training_done_title);
-                info_txt.setText(R.string.training_done_body);
+                infoTitle.setText(R.string.training_done_title);
+                infoText.setText(R.string.training_done_body);
                 homeButton.setVisibility(View.GONE);
                 nextButton.setVisibility(View.VISIBLE);
 
@@ -802,9 +802,9 @@ public class TaskStatusActivity extends AppCompatActivity {
         }  else if (isUserCreated && !isFilesUploaded) {
             uploadFiles(userUuid);
         } else if (isFilesUploaded && !isModelRequest) {
-            createModel(userUuid);
+            requestTraining(userUuid);
         } else if (isModelRequest && !isModelCreated) {
-            checkModel(userUuid);
+            checkTraining(userUuid);
         }
     }
 

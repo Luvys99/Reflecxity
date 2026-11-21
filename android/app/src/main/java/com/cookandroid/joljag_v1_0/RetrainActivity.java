@@ -33,16 +33,16 @@ import okhttp3.ResponseBody;
 
 public class RetrainActivity extends AppCompatActivity {
 
-    private static final String MainAPI_URL = BuildConfig.MainAPI_URL;
-    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online";
-    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL + "/users/";
+    private static final String MAIN_API_URL = BuildConfig.MAIN_API_URL;
+    private static final String ONLINE_CHECK_URL = MAIN_API_URL + "/online";
+    private static final String USERS_URL = BuildConfig.MAIN_API_URL + "/users/";
 
     private TextView remainingTimeText;
     private Handler handler = new Handler();
     private Runnable updateTimeRunnable;
 
-    private boolean server_status_main = false;
-    private boolean server_status_model = false;
+    private boolean isMainServerOnline = false;
+    private boolean isModelServerOnline = false;
 
     private static final int timelimit = 300000; //시간 제한 (밀리초)
 
@@ -116,7 +116,7 @@ public class RetrainActivity extends AppCompatActivity {
                             public void onClick(DialogInterface dialog, int which) {
                                 // 서버 상태를 확인한 후 TaskStatusActivity로 넘어가는 로직 추가
                                 checkServerStatus(() -> {
-                                    if (server_status_main && server_status_model) {
+                                    if (isMainServerOnline && isModelServerOnline) {
                                         // 서버에서 사용자 삭제 요청
                                         deleteUserFromServer(userUUID);
 
@@ -155,7 +155,7 @@ public class RetrainActivity extends AppCompatActivity {
 
         // 요청 생성 (DELETE 요청)
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUUID)
+                .url(USERS_URL + userUUID)
                 .delete()
                 .build();
 
@@ -204,7 +204,7 @@ public class RetrainActivity extends AppCompatActivity {
                 .build();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_OnlineCheck)
+                .url(ONLINE_CHECK_URL)
                 .get()
                 .build();
 
@@ -222,18 +222,18 @@ public class RetrainActivity extends AppCompatActivity {
                         String responseBodyString = responseBody.string();
                         JSONObject jsonResponse = new JSONObject(responseBodyString);
                         String status = jsonResponse.getString("status");
-                        Boolean model_server = jsonResponse.getBoolean("model_server");
+                        Boolean modelServer = jsonResponse.getBoolean("model_server");
 
                         runOnUiThread(() -> {
                             if ("online".equals(status)) {
-                                server_status_main = true;
-                                server_status_model = model_server;
+                                isMainServerOnline = true;
+                                isModelServerOnline = modelServer;
                             } else {
-                                server_status_main = false;
+                                isMainServerOnline = false;
                             }
 
                             // 서버 상태 확인 후 성공 시 콜백 실행
-                            if (server_status_main && server_status_model) {
+                            if (isMainServerOnline && isModelServerOnline) {
                                 onSuccess.run();
                             } else {
                                 showErrorSnackbar(findViewById(R.id.layout));

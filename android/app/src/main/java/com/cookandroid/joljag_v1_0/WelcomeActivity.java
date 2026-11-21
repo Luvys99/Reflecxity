@@ -12,14 +12,14 @@ import com.google.android.material.snackbar.Snackbar;
 
 public class WelcomeActivity extends AppCompatActivity {
 
-    ImageView app_logo;
+    ImageView appLogo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_welcome);
 
-        app_logo = findViewById(R.id.app_logo);
+        appLogo = findViewById(R.id.app_logo);
 
         findViewById(R.id.newUser).setOnClickListener(v -> {
             Intent newUserIntent = new Intent(WelcomeActivity.this, TermsActivity.class);

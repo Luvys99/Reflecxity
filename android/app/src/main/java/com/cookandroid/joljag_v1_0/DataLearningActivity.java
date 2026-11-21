@@ -59,16 +59,16 @@ import okhttp3.ResponseBody;
 
 public class DataLearningActivity extends AppCompatActivity {
 
-    private TextView txt_delete;
-    private TextView txt_play;
-    private TextView txt_record;
-    private TextView txt_send;
-    private TextView txt_currentTime;
-    private TextView txt_totalTime;
+    private TextView txtDelete;
+    private TextView txtPlay;
+    private TextView txtRecord;
+    private TextView txtSend;
+    private TextView txtCurrentTime;
+    private TextView txtTotalTime;
     private ImageButton recording;
     private ImageButton playing;
-    private ImageButton delete_selected;
-    private ImageButton submit_selected;
+    private ImageButton deleteSelected;
+    private ImageButton submitSelected;
     private String from;
     private MediaRecorder recorder;
     private MediaPlayer player;
@@ -81,11 +81,11 @@ public class DataLearningActivity extends AppCompatActivity {
 
     private static final int REQUEST_AUDIO_PERMISSION_CODE = 200;
 
-    private static final String MainAPI_URL = BuildConfig.MainAPI_URL;
-    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online";
+    private static final String MAIN_API_URL = BuildConfig.MAIN_API_URL;
+    private static final String ONLINE_CHECK_URL = MAIN_API_URL + "/online";
 
-    private boolean server_status_main = false;
-    private boolean server_status_model = false;
+    private boolean isMainServerOnline = false;
+    private boolean isModelServerOnline = false;
 
     private SeekBar seekBar;
     private Handler seekBarHandler = new Handler(); // UI 업데이트를 위한 핸들러
@@ -94,7 +94,7 @@ public class DataLearningActivity extends AppCompatActivity {
     private Handler recordingTimeHandler = new Handler();
     private long recordingStartTime;
     private Runnable updateRecordingTime;
-    private TextView txt_recordingTime;
+    private TextView txtRecordingTime;
 
     // 학습에 필요한 녹음 길이 (Main 서버가 아니라 앱이 정한 조건)
     private static final long MIN_TRAINING_MS = 5 * 60 * 1000;
@@ -114,19 +114,19 @@ public class DataLearningActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_data_learning);
 
-        txt_delete = findViewById(R.id.txt_delete);
-        txt_play = findViewById(R.id.txt_play);
-        txt_record = findViewById(R.id.txt_record);
-        txt_send = findViewById(R.id.txt_send);
-        txt_currentTime = findViewById(R.id.txt_currentTime);
-        txt_totalTime = findViewById(R.id.txt_totalTime);
+        txtDelete = findViewById(R.id.txt_delete);
+        txtPlay = findViewById(R.id.txt_play);
+        txtRecord = findViewById(R.id.txt_record);
+        txtSend = findViewById(R.id.txt_send);
+        txtCurrentTime = findViewById(R.id.txt_currentTime);
+        txtTotalTime = findViewById(R.id.txt_totalTime);
         recording = findViewById(R.id.button_recording);
         playing = findViewById(R.id.button_playing);
-        delete_selected = findViewById(R.id.button_delete_selected);
-        submit_selected = findViewById(R.id.button_submit_selected);
+        deleteSelected = findViewById(R.id.button_delete_selected);
+        submitSelected = findViewById(R.id.button_submit_selected);
         seekBar = findViewById(R.id.seekBar);
 
-        txt_recordingTime = findViewById(R.id.txt_recordingTime); // 녹음 시간 TextView 초기화
+        txtRecordingTime = findViewById(R.id.txt_recordingTime); // 녹음 시간 TextView 초기화
 
         // 모은 녹음 진행, 녹음 중 읽을 글 (#82)
         progressCard = findViewById(R.id.progress_card);
@@ -204,22 +204,22 @@ public class DataLearningActivity extends AppCompatActivity {
 
         // 초기에는 버튼을 숨긴 상태로 설정
         playing.setVisibility(View.GONE);
-        delete_selected.setVisibility(View.GONE);
-        submit_selected.setVisibility(View.GONE);
+        deleteSelected.setVisibility(View.GONE);
+        submitSelected.setVisibility(View.GONE);
         recording.setVisibility(View.VISIBLE);
         seekBar.setVisibility(View.GONE);
-        txt_play.setVisibility(View.GONE);
-        txt_delete.setVisibility(View.GONE);
-        txt_send.setVisibility(View.GONE);
-        txt_record.setVisibility(View.VISIBLE);
-        txt_currentTime.setVisibility(View.GONE);
-        txt_totalTime.setVisibility(View.GONE);
+        txtPlay.setVisibility(View.GONE);
+        txtDelete.setVisibility(View.GONE);
+        txtSend.setVisibility(View.GONE);
+        txtRecord.setVisibility(View.VISIBLE);
+        txtCurrentTime.setVisibility(View.GONE);
+        txtTotalTime.setVisibility(View.GONE);
         syncButtonContainers();
 
         // 버튼 클릭 리스너 설정
         playing.setOnClickListener(v -> playSelectedFiles());
-        delete_selected.setOnClickListener(v -> confirmDeleteSelectedFiles());
-        submit_selected.setOnClickListener(v -> {
+        deleteSelected.setOnClickListener(v -> confirmDeleteSelectedFiles());
+        submitSelected.setOnClickListener(v -> {
             confirmSubmitSelectedFiles();
 
             // 선택한 파일 경로를 SharedPreferences에 저장
@@ -266,29 +266,29 @@ public class DataLearningActivity extends AppCompatActivity {
     private void updateActionButtonsVisibility(int selectedCount) {
         if (selectedCount > 0 || isPlaying) {
             playing.setVisibility(View.VISIBLE);
-            delete_selected.setVisibility(View.VISIBLE);
-            submit_selected.setVisibility(View.VISIBLE);
+            deleteSelected.setVisibility(View.VISIBLE);
+            submitSelected.setVisibility(View.VISIBLE);
             recording.setVisibility(View.GONE);
-            txt_play.setVisibility(View.VISIBLE);
-            txt_delete.setVisibility(View.VISIBLE);
-            txt_send.setVisibility(View.VISIBLE);
-            txt_record.setVisibility(View.GONE);
+            txtPlay.setVisibility(View.VISIBLE);
+            txtDelete.setVisibility(View.VISIBLE);
+            txtSend.setVisibility(View.VISIBLE);
+            txtRecord.setVisibility(View.GONE);
         } else {
             playing.setVisibility(View.GONE);
-            delete_selected.setVisibility(View.GONE);
-            submit_selected.setVisibility(View.GONE);
+            deleteSelected.setVisibility(View.GONE);
+            submitSelected.setVisibility(View.GONE);
             recording.setVisibility(View.VISIBLE);
-            txt_play.setVisibility(View.GONE);
-            txt_delete.setVisibility(View.GONE);
-            txt_send.setVisibility(View.GONE);
-            txt_record.setVisibility(View.VISIBLE);
+            txtPlay.setVisibility(View.GONE);
+            txtDelete.setVisibility(View.GONE);
+            txtSend.setVisibility(View.GONE);
+            txtRecord.setVisibility(View.VISIBLE);
         }
         syncButtonContainers();
     }
 
     // 버튼을 숨기면 그 칸(버튼 + 아래 글자)도 숨겨서, 녹음하기 버튼 하나일 때 가로를 다 쓰게 한다 (#82)
     private void syncButtonContainers() {
-        for (View button : new View[]{playing, delete_selected, submit_selected, recording}) {
+        for (View button : new View[]{playing, deleteSelected, submitSelected, recording}) {
             ((View) button.getParent()).setVisibility(button.getVisibility());
         }
     }
@@ -298,7 +298,7 @@ public class DataLearningActivity extends AppCompatActivity {
         if (!isPlaying) {
             if (selectedFiles.size() == 1) {
                 playAudio(selectedFiles.get(0));
-                txt_play.setText(R.string.record_play_stop);
+                txtPlay.setText(R.string.record_play_stop);
                 playing.setImageDrawable(getDrawable(R.drawable.stop));
             } else if (selectedFiles.size() > 1) {
                 Snackbar.make(findViewById(R.id.layout), "한 번에 하나의 파일만 재생할 수 있습니다.", Snackbar.LENGTH_SHORT).setAction("확인",new View.OnClickListener() { @Override public void onClick(View v) {}}).show();
@@ -456,7 +456,7 @@ public class DataLearningActivity extends AppCompatActivity {
 
             // 서버 상태를 확인한 후 TaskStatusActivity로 넘어가는 로직 추가
             checkServerStatus(() -> {
-                if (server_status_main && server_status_model) {
+                if (isMainServerOnline && isModelServerOnline) {
                     // TaskStatusActivity로 넘어가기
                     Intent serviceIntent = new Intent(DataLearningActivity.this, TaskCheckService.class);
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) { // 현재 안드로이드 버전 점검
@@ -509,14 +509,14 @@ public class DataLearningActivity extends AppCompatActivity {
             player.start();
             isPlaying = true;
             seekBar.setMax(player.getDuration());
-            txt_totalTime.setText(formatDuration(player.getDuration()));
+            txtTotalTime.setText(formatDuration(player.getDuration()));
             updateSeekBar = new Runnable() {
                 @Override
                 public void run() {
                     if (player != null) {
-                        txt_totalTime.setVisibility(View.VISIBLE);
-                        txt_currentTime.setVisibility(View.VISIBLE);
-                        txt_currentTime.setText(formatDuration(player.getCurrentPosition()));
+                        txtTotalTime.setVisibility(View.VISIBLE);
+                        txtCurrentTime.setVisibility(View.VISIBLE);
+                        txtCurrentTime.setText(formatDuration(player.getCurrentPosition()));
                         seekBar.setVisibility(View.VISIBLE);
                         seekBar.setProgress(player.getCurrentPosition());
                     }
@@ -549,11 +549,11 @@ public class DataLearningActivity extends AppCompatActivity {
                 seekBarHandler.removeCallbacks(updateSeekBar);
                 seekBar.setVisibility(View.GONE);
                 seekBar.setProgress(0);
-                txt_currentTime.setText("00:00");
-                txt_currentTime.setVisibility(View.GONE);
-                txt_totalTime.setText("00:00");
-                txt_totalTime.setVisibility(View.GONE);
-                txt_play.setText(R.string.record_play);
+                txtCurrentTime.setText("00:00");
+                txtCurrentTime.setVisibility(View.GONE);
+                txtTotalTime.setText("00:00");
+                txtTotalTime.setVisibility(View.GONE);
+                txtPlay.setText(R.string.record_play);
                 playing.setImageDrawable(getDrawable(R.drawable.play_arrow));
                 updateActionButtonsVisibility(selectedFiles.size());
             }
@@ -613,7 +613,7 @@ public class DataLearningActivity extends AppCompatActivity {
                 public void run() {
                     if (isRecording) {
                         long elapsedTime = System.currentTimeMillis() - recordingStartTime;
-                        txt_recordingTime.setText(formatDuration(elapsedTime));
+                        txtRecordingTime.setText(formatDuration(elapsedTime));
                         recordingTimeHandler.postDelayed(this, 1000); // 1초마다 업데이트
                     }
                 }
@@ -621,7 +621,7 @@ public class DataLearningActivity extends AppCompatActivity {
             recordingTimeHandler.post(updateRecordingTime); // 타이머 시작
 
             // 녹음이 성공적으로 시작되었을 때만 버튼 텍스트 변경
-            txt_record.setText(R.string.record_stop);
+            txtRecord.setText(R.string.record_stop);
             recording.setImageDrawable(getDrawable(R.drawable.stop));
             recording.setBackground(getDrawable(R.drawable.bg_button_recording));
             showRecordingPanel(true);
@@ -646,7 +646,7 @@ public class DataLearningActivity extends AppCompatActivity {
                 recorder = null;
                 isRecording = false;
                 recordingTimeHandler.removeCallbacks(updateRecordingTime); // 타이머 중지
-                txt_record.setText(R.string.record_start);
+                txtRecord.setText(R.string.record_start);
                 recording.setImageDrawable(getDrawable(R.drawable.record));
                 recording.setBackground(getDrawable(R.drawable.bg_button_primary));
                 showRecordingPanel(false);
@@ -715,7 +715,7 @@ public class DataLearningActivity extends AppCompatActivity {
                 .build();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_OnlineCheck)
+                .url(ONLINE_CHECK_URL)
                 .get()
                 .build();
 
@@ -733,18 +733,18 @@ public class DataLearningActivity extends AppCompatActivity {
                         String responseBodyString = responseBody.string();
                         JSONObject jsonResponse = new JSONObject(responseBodyString);
                         String status = jsonResponse.getString("status");
-                        boolean model_server = jsonResponse.getBoolean("model_server");
+                        boolean modelServer = jsonResponse.getBoolean("model_server");
 
                         runOnUiThread(() -> {
                             if ("online".equals(status)) {
-                                server_status_main = true;
-                                server_status_model = model_server;
+                                isMainServerOnline = true;
+                                isModelServerOnline = modelServer;
                             } else {
-                                server_status_main = false;
+                                isMainServerOnline = false;
                             }
 
                             // 서버 상태 확인 후 성공 시 콜백 실행
-                            if (server_status_main && server_status_model) {
+                            if (isMainServerOnline && isModelServerOnline) {
                                 onSuccess.run();
                             } else {
                                 showErrorSnackbar(findViewById(R.id.layout));
