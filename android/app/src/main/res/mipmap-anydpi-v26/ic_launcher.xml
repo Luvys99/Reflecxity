@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 아이콘 (#97): 파란 바탕 + 파형·비행기. Android 13 테마 아이콘은 같은 모양을 한 색으로 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@mipmap/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <background android:drawable="@color/sky"/>
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+    <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
 </adaptive-icon>

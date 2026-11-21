@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 앱 아이콘 앞면 (#97): 내 목소리 파형 + 비행 항로. 시작 화면 그림(hero_voice_trip)과 같은 모양 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="@android:color/white" android:fillAlpha="0.5" android:pathData="M28.58,72.04 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M30.06,68.21 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M31.74,64.45 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M33.62,60.83 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M35.74,57.30 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M38.08,53.96 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M40.67,50.77 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M43.50,47.82 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M46.59,45.11 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M49.92,42.72 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M53.48,40.68 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M57.22,39.06 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z M61.17,37.93 a0.82,0.82 0 1,0 1.64,0 a0.82,0.82 0 1,0 -1.64,0 Z" />
+    <group android:translateX="72.04" android:translateY="36.78" android:rotation="80" android:scaleX="0.558" android:scaleY="0.558">
+        <path android:fillColor="@color/sunset" android:pathData="M0,-10 L4,-2 L14,2 L14,5 L4,3 L3,11 L6,14 L6,16 L0,14 L-6,16 L-6,14 L-3,11 L-4,3 L-14,5 L-14,2 L-4,-2 Z" />
+    </group>
+    <path android:pathData="M36.78,60.56 L36.78,68.76" android:strokeColor="@android:color/white" android:strokeWidth="5.74" android:strokeLineCap="round" />
+    <path android:pathData="M45.80,52.36 L45.80,76.96" android:strokeColor="@android:color/white" android:strokeWidth="5.74" android:strokeLineCap="round" />
+    <path android:pathData="M54.82,45.80 L54.82,83.52" android:strokeColor="@color/sunset" android:strokeWidth="5.74" android:strokeLineCap="round" />
+    <path android:pathData="M63.84,54.00 L63.84,75.32" android:strokeColor="@android:color/white" android:strokeWidth="5.74" android:strokeLineCap="round" />
+    <path android:pathData="M72.86,59.74 L72.86,69.58" android:strokeColor="@android:color/white" android:strokeWidth="5.74" android:strokeLineCap="round" />
+</vector>
