@@ -3,7 +3,9 @@ import os
 import configparser
 from typing import List, Optional
 import time
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
+import hmac
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request, Depends
+from fastapi.security import APIKeyHeader
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
@@ -19,6 +21,7 @@ from train_queue import (
 )
 from tts_queue import enqueue_tts_job, wait_for_tts_result
 from translation_limit import reserve_translation_chars, release_translation_chars
+from rate_limit import client_ip, count_request
 
 # 로그 설정: 시간과 함께 출력
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -59,8 +62,28 @@ redis_binary_client = None  # TTS 결과(음성 bytes)용
 db_manager = DBManager(DB_CONFIG)
 db_manager.create_table()
 
+# 앱 전용 문구 (#103). 있으면 헤더 X-App-Key가 같은 요청만 받는다. 없으면(개발) 검사하지 않는다
+# 앱(APK)을 풀면 보이는 값이라 자물쇠가 아니라 주소를 찔러 보는 봇을 막는 용도다
+APP_KEY = os.environ.get("APP_KEY")
+app_key_header = APIKeyHeader(name="X-App-Key", auto_error=False)
+
+
+def check_app_key(app_key: Optional[str] = Depends(app_key_header)):
+    if APP_KEY and not (app_key and hmac.compare_digest(app_key, APP_KEY)):
+        raise HTTPException(status_code=401, detail="앱 키가 없거나 다릅니다.")
+
+
+# 공개할 때는 API 목록(Swagger, OpenAPI)을 끈다 (#103). 기본은 켜짐 (개발)
+DOCS_ENABLED = os.environ.get("DOCS_ENABLED", "true").lower() != "false"
+
 # Swagger(/docs)에서 Execute 결과 아래에 걸린 시간을 표시한다 (#15)
-app = FastAPI(swagger_ui_parameters={"displayRequestDuration": True})
+app = FastAPI(
+    swagger_ui_parameters={"displayRequestDuration": True},
+    docs_url="/docs" if DOCS_ENABLED else None,
+    redoc_url="/redoc" if DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if DOCS_ENABLED else None,
+    dependencies=[Depends(check_app_key)],
+)
 
 @app.on_event("startup")
 async def connect_redis_queues():
@@ -91,6 +114,27 @@ GOOGLE_TRANSLATE_URL = "https://translation.googleapis.com/language/translate/v2
 # 번역 하루 글자 수 상한. 넘으면 429 (#105). 문장 하나가 20~50자라 기본 2만 자면 하루 수백 문장
 TRANSLATE_DAILY_CHAR_LIMIT = int(os.environ.get("TRANSLATE_DAILY_CHAR_LIMIT", 20000))
 
+# 요청 수 제한 (#103): 기능 → (횟수, 구간 초). 정상 사용보다 넉넉하게, 반복 낭비는 막게. .env로 횟수를 바꾼다
+RATE_LIMITS = {
+    "create_user": (int(os.environ.get("RATE_LIMIT_CREATE_USER_PER_HOUR", 5)), 3600),  # IP별. 정상은 1번
+    "upload": (int(os.environ.get("RATE_LIMIT_UPLOAD_PER_HOUR", 30)), 3600),  # 사용자별. 정상은 녹음 몇 개
+    "training": (int(os.environ.get("RATE_LIMIT_TRAINING_PER_HOUR", 3)), 3600),  # IP별. 한 번에 GPU 몇 분
+    "tts": (int(os.environ.get("RATE_LIMIT_TTS_PER_MINUTE", 10)), 60),  # 사용자별. 한 번에 GPU 약 3초
+    "translation": (int(os.environ.get("RATE_LIMIT_TRANSLATION_PER_MINUTE", 30)), 60),  # IP별
+}
+
+
+def rate_limit(name, by_user=False):
+    """기능별 요청 수 제한. by_user면 주소의 user_uuid, 아니면 IP로 센다. 넘으면 429 + Retry-After"""
+    async def check(request: Request):
+        limit, window_seconds = RATE_LIMITS[name]
+        who = request.path_params["user_uuid"] if by_user else client_ip(request)
+        retry_after = await count_request(redis_client, name, who, limit, window_seconds)
+        if retry_after is not None:
+            logging.warning(f"요청 수 제한: {name} {who}")
+            raise HTTPException(status_code=429, detail="요청이 너무 많습니다. 잠시 뒤 다시 시도해 주세요.", headers={"Retry-After": str(retry_after)})
+    return Depends(check)
+
 # 요청별 로깅 미들웨어
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -116,6 +160,7 @@ def read_root():
     tags=["사용자"],
     summary="사용자 생성",
     description="UUID를 발급하고 DB `users` 테이블에 저장한다. 로그인이 없어서 이 UUID가 사용자 신분증 역할을 한다. Model Server는 부르지 않는다.",
+    dependencies=[rate_limit("create_user")],
 )
 def create_user():
     user_uuid = generate_uuid()
@@ -152,6 +197,7 @@ def delete_user(user_uuid: str):
     tags=["녹음 파일"],
     summary="녹음 업로드",
     description="확장자를 검사하고(m4a, ogg, wav만, 그 밖은 400) Model Server의 `POST /user/{user_uuid}/upload`로 그대로 전달한다. 파일은 Model Server 디스크에만 저장되고 DB에는 기록하지 않는다.",
+    dependencies=[rate_limit("upload", by_user=True)],
 )
 async def upload_file(user_uuid: str, file: UploadFile = File(...)):
     if not is_allowed_file(file.filename, ALLOWED_EXTENSIONS):
@@ -241,6 +287,7 @@ async def read_training_status(user_uuid):
     tags=["학습"],
     summary="학습 요청 (대기열에 추가)",
     description="Redis에 작업 정보(`job:{id}`, queued)를 만들고 `stream:train`에 넣는다. Windows의 학습 워커가 꺼내 학습한다. 같은 사용자의 학습이 대기·진행 중이면 다시 넣지 않는다 (#42). 어느 쪽이든 `GET /users/{user_uuid}/training`과 같은 모양으로 지금 상태를 돌려준다 (#63).",
+    dependencies=[rate_limit("training")],
 )
 async def request_training(user_uuid: str):
     job_id = await enqueue_train_job(redis_client, user_uuid)
@@ -271,6 +318,7 @@ async def get_training_status(user_uuid: str):
     tags=["TTS"],
     summary="TTS (텍스트 → 내 목소리)",
     description="Redis에 TTS 작업(`job:{id}`)을 넣고 `stream:tts`에 번호를 넣는다. Windows의 TTS 워커가 끝 신호(`job:{id}:done`)를 줄 때까지 `BLPOP`으로 기다렸다가(최대 `TTS_WAIT_SECONDS`, 기본 90초) 결과 음성(`job:{id}:result`)을 내려준다. 빈 문장·학습이 끝나지 않은 사용자는 400, 워커 실패는 500, 시간 초과는 504. pitch를 안 보내면 학습 때 잰 자동 피치, 그것도 없으면 `config.ini`의 기본값(3) (워커가 고른다, #59).",
+    dependencies=[rate_limit("tts", by_user=True)],
 )
 async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: Optional[int] = Form(None)):
     # 입구 검사: 다시 해도 같은 요청은 큐에 넣지 않는다
@@ -306,6 +354,7 @@ class TranslationRequest(BaseModel):
     tags=["번역"],
     summary="번역 (Google 번역을 대신 호출)",
     description="앱 대신 Google 번역 v2를 부른다. 키는 서버 `.env`의 `GOOGLE_TRANSLATE_API_KEY`에만 있다 (#102). 하루 글자 수 상한(`TRANSLATE_DAILY_CHAR_LIMIT`, 기본 2만 자)을 넘으면 Google을 부르지 않고 429 (#105). 빈 문장 400, 키 없음 503, Google 실패 502.",
+    dependencies=[rate_limit("translation")],
 )
 async def translate(request: TranslationRequest):
     if not request.text.strip():

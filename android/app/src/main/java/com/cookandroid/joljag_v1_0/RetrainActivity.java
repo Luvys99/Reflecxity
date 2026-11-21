@@ -151,7 +151,7 @@ public class RetrainActivity extends AppCompatActivity {
 
     // OkHttp를 사용해 서버에 사용자 삭제 요청을 보내는 메서드
     private void deleteUserFromServer(String userUUID) {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = MainApi.newClient();
 
         // 요청 생성 (DELETE 요청)
         Request request = new Request.Builder()
@@ -197,7 +197,7 @@ public class RetrainActivity extends AppCompatActivity {
     }
 
     private void checkServerStatus(Runnable onSuccess) {
-        OkHttpClient client = new OkHttpClient.Builder()
+        OkHttpClient client = MainApi.newClientBuilder()
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .writeTimeout(5, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)
