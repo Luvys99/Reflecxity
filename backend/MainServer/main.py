@@ -6,6 +6,7 @@ import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
 
@@ -82,6 +83,9 @@ DEFAULT_PITCH = int(config.get('TTS', 'default_pitch'))
 MODEL_GENERATION_TIMEOUT_SECONDS = int(os.environ.get("MODEL_GENERATION_TIMEOUT", 600))
 # TTS 결과를 기다리는 최대 시간 (초). 워커 시도 3번 × 약 15~20초에 여유를 둔 값 (#38)
 TTS_WAIT_SECONDS = int(os.environ.get("TTS_WAIT_SECONDS", 90))
+# Google 번역 키. 앱(APK)에 넣으면 누구나 꺼내 쓸 수 있어서 서버에만 둔다 (#102). 없으면 번역 요청에 503
+GOOGLE_TRANSLATE_API_KEY = os.environ.get("GOOGLE_TRANSLATE_API_KEY")
+GOOGLE_TRANSLATE_URL = "https://translation.googleapis.com/language/translate/v2"
 
 # 요청별 로깅 미들웨어
 @app.middleware("http")
@@ -286,6 +290,40 @@ async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: Optio
 
     logging.info(f"TTS 생성 성공: {user_uuid} (작업 {job_id})")
     return Response(content=audio, media_type="audio/wav", headers={"Content-Disposition": f"attachment; filename={user_uuid}.wav"})
+
+
+class TranslationRequest(BaseModel):
+    text: str
+    target: str  # 번역할 언어 코드 (en, ko)
+
+
+@app.post(
+    "/translations",
+    tags=["번역"],
+    summary="번역 (Google 번역을 대신 호출)",
+    description="앱 대신 Google 번역 v2를 부른다. 키는 서버 `.env`의 `GOOGLE_TRANSLATE_API_KEY`에만 있다 (#102). 빈 문장 400, 키 없음 503, Google 실패 502.",
+)
+def translate(request: TranslationRequest):
+    if not request.text.strip():
+        raise HTTPException(status_code=400, detail="문장이 비어 있습니다.")
+    if not GOOGLE_TRANSLATE_API_KEY:
+        raise HTTPException(status_code=503, detail="번역 키가 설정되지 않았습니다.")
+
+    try:
+        # 키는 주소(?key=)가 아니라 헤더로 보낸다: 에러 메시지·로그에 주소가 찍혀도 키가 남지 않는다
+        response = requests.post(
+            GOOGLE_TRANSLATE_URL,
+            headers={"X-Goog-Api-Key": GOOGLE_TRANSLATE_API_KEY},
+            json={"q": request.text, "target": request.target, "format": "text"},
+            timeout=10,
+        )
+        response.raise_for_status()
+        translated_text = response.json()["data"]["translations"][0]["translatedText"]
+    except (requests.exceptions.RequestException, KeyError, IndexError, ValueError) as e:
+        logging.error(f"번역 실패: {type(e).__name__}")
+        raise HTTPException(status_code=502, detail="번역 서버 응답 오류")
+
+    return {"translated_text": translated_text}
 
 
 # 대기열 상태 조회 엔드포인트
