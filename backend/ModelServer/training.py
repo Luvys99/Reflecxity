@@ -1,4 +1,4 @@
-# 학습 파이프라인: 녹음 합치기 → UVR → preprocess → extract → train → index → pitch.txt
+# 학습 파이프라인: 녹음 합치기 → UVR → preprocess → extract → train → index → 결과 확인
 # 결과(성공 / 실패) 기록은 부르는 쪽이 한다 (학습 워커 → Redis)
 import os
 import sys
@@ -66,9 +66,6 @@ async def combine_audio(model_name, dataset_path, voice_file_name):
 # 비동기 모델 생성 작업 (모델 서버에서 비동기 처리)
 async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, voice_file_name):
     # --- 0. 음성 통합 시스템 실행 ---
-    
-    sr = 40000
-    combined_audio = []
     voice_file = await combine_audio(model_name, dataset_path, voice_file_name)
     # --- 1. Uvr 실행 ---
     print(voice_file)
@@ -155,14 +152,11 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
     #"--gpu", "0"  # GPU 사용 시 설정
     await run_command_async(train_command, model_name, "train")  # 비동기 실행
 
-            # 모델 파일 경로 찾기
-
-    model_dir = os.path.join(
-        ".", "logs", model_name
-    )  # os.path.join 사용
+    # 학습 결과 확인: 모델(.pth)이나 인덱스(added_*.index)가 없으면 학습 실패로 본다
+    model_dir = os.path.join(".", "logs", model_name)
     pth_files = [
-        f for f in os.listdir(model_dir) if f.endswith(".pth") and "_2e_" in f  
-    ]  # model_name 포함된 파일만 추가
+        f for f in os.listdir(model_dir) if f.endswith(".pth") and "_2e_" in f
+    ]
     index_files = [
         f
         for f in os.listdir(model_dir)
@@ -175,38 +169,3 @@ async def create_model_async(model_name, dataset_path, sample_rate, cpu_cores, v
         raise FileNotFoundError(
             f"No 'added_*.index' file found in {model_dir}"
         )
-
-    pth_path = os.path.join(
-        model_dir, pth_files[0]
-    )  # os.path.join 사용
-    index_path = os.path.join(
-        model_dir, index_files[0]
-    )  # os.path.join 사용
-
-    # --- 5. autopitch 실행 ---
-    '''
-    pitch_command = [
-        sys.executable,
-        "rvc_cli.py",
-        "infer",
-        "--input_path", "pitchtest/temp.ogg",  # 테스트 음성 파일 경로
-        "--output_path", f"logs/{model_name}/after.ogg",  # 출력 음성 파일 경로
-        "--pth_path", pth_path,
-        "--index_path", index_path,
-        "--f0_method", "rmvpe",
-        "--export_format", "WAV",
-        "--pitch", "0"  # 초기 피치 값 설정
-    ]
-    await run_command_async(pitch_command, model_name, "autopitch")  # 비동기 실행
-    # --- 6. 피치 최적화 ---
-
-    print(f"[Model {model_name}] autopitch 단계 시작...")
-    best_pitch = await find_optimal_pitch(dataset_path, f"logs/{model_name}/after.wav", model_name, pth_path, index_path)
-    print(f"최적의 피치 값: {best_pitch}")
-    '''
-    
-    # --- 7. 피치 값 저장 ---
-    best_pitch = 0
-    with open(os.path.join(".", "logs", model_name, "pitch.txt"), "w") as f:
-        f.write(f"{best_pitch}")
-    print(f"[Model {model_name}] autopitch 단계 완료.")
