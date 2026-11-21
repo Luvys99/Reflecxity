@@ -202,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 uuid = sharedPreferences.getString("UUID", null);
                 tts_text = translatedText.getText().toString();
-                tts_pitch = sharedPreferences.getInt("tts_pitch", 0);
+                tts_pitch = sharedPreferences.getInt("tts_pitch", SettingsActivity.PITCH_NOT_SET);
 
                 if (tts_text != null && !tts_text.trim().isEmpty()) {
                     if (tts_text.equals(previousTtsText) && cachedTtsFile != null && cachedTtsFile.exists() && tts_pitch == previousPitch) {
@@ -533,10 +533,13 @@ private void translateText(String originalText) {
                 .build();
 
         // FormBody를 사용하여 데이터를 보내기 위한 준비
-        RequestBody requestBody = new FormBody.Builder()
-                .add("tts_text", tts_text)
-                .add("pitch", String.valueOf(tts_pitch))
-                .build();
+        FormBody.Builder formBuilder = new FormBody.Builder()
+                .add("tts_text", tts_text);
+        // 피치를 저장한 적이 없으면 보내지 않는다 → 서버가 자동 피치를 쓴다 (#72)
+        if (tts_pitch != SettingsActivity.PITCH_NOT_SET) {
+            formBuilder.add("pitch", String.valueOf(tts_pitch));
+        }
+        RequestBody requestBody = formBuilder.build();
 
         // 요청 생성
         Request request = new Request.Builder()

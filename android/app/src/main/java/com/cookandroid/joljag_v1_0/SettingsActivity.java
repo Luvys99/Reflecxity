@@ -20,6 +20,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.snackbar.Snackbar;
 
 public class SettingsActivity extends AppCompatActivity {
+    // 사용자가 피치를 저장한 적 없음. 이때 TTS 요청에 피치를 보내지 않아 서버가 학습 때 잰 자동 피치를 쓴다 (#72)
+    public static final int PITCH_NOT_SET = Integer.MIN_VALUE;
 
     public ImageButton button_retrain;
     public ImageButton button_data_transfer;
@@ -106,9 +108,9 @@ public class SettingsActivity extends AppCompatActivity {
 
     public static void showPitchDialog(Context context, SharedPreferences sharedPreferences) {
         // 피치 값을 가져오고 초기 설정 여부 확인
-        int tts_pitch = sharedPreferences.getInt("tts_pitch", Integer.MIN_VALUE); // 기본값을 Integer.MIN_VALUE로 설정
+        int tts_pitch = sharedPreferences.getInt("tts_pitch", PITCH_NOT_SET);
 
-        if (tts_pitch == Integer.MIN_VALUE) {
+        if (tts_pitch == PITCH_NOT_SET) {
             // 피치 값이 설정된 적이 없는 경우 초기값을 0으로 표시
             tts_pitch = 0;
         }
@@ -160,6 +162,11 @@ public class SettingsActivity extends AppCompatActivity {
                     // 다이얼로그 확인 버튼 클릭 시, 현재 시크바 값을 저장
                     int displayedValue = seekBar.getProgress() - 24;
                     editor.putInt("tts_pitch", displayedValue);
+                    editor.apply();
+                })
+                .setNeutralButton("자동", (dialog, which) -> {
+                    // 저장한 피치를 지워 다시 자동 피치로 (#72)
+                    editor.remove("tts_pitch");
                     editor.apply();
                 })
                 .setNegativeButton("취소", null)
