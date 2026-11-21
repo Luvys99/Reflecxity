@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 주 버튼 배경: 누를 수 없으면 모래색 (#80) -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/sand_dark" android:state_enabled="false" />
+    <item android:color="@color/sky" />
+</selector>

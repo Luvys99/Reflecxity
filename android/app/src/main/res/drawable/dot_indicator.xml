@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 소개 페이지 점. 지금 페이지는 enabled=true (넓고 파랑) (#80) -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/sky" />
+            <corners android:radius="3dp" />
+            <size android:width="20dp" android:height="6dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#D5CAB8" />
+            <corners android:radius="3dp" />
+            <size android:width="6dp" android:height="6dp" />
+        </shape>
+    </item>
+</selector>

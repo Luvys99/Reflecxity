@@ -1,31 +1,152 @@
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 소개 3: 녹음 전에 준비할 것 (#80) -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="16dp">
+    android:fillViewport="true">
 
-    <ImageView
-        android:id="@+id/imageView5"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp"
-        android:maxWidth="600dp"
-        android:maxHeight="1200dp"
-        android:adjustViewBounds="true"
-        app:srcCompat="@drawable/guide_screen2" />
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="56dp">
 
     <TextView
+        style="@style/TextAppearance.Reflecxity.Display"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp"
-        android:fontFamily="@font/pretendard_light"
-        android:text="누구나 손쉽게 간단한 방법으로 사용하실 수 있습니다."
-        android:textAlignment="center"
-        android:textColor="@color/grey900"
-        android:textSize="20sp" />
+        android:text="@string/intro_ready_title" />
+
+    <TextView
+        style="@style/TextAppearance.Reflecxity.Body.Secondary"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:text="@string/intro_ready_body" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card"
+        android:orientation="horizontal"
+        android:padding="20dp">
+
+        <ImageView android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/bg_step_number" android:padding="11dp" android:importantForAccessibility="no" android:src="@drawable/ic_check" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_semibold"
+                    android:text="@string/intro_ready1_title"
+                    android:textColor="@color/ink"
+                    android:textSize="17sp" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/TextAppearance.Reflecxity.Body.Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/intro_ready1_body"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card"
+        android:orientation="horizontal"
+        android:padding="20dp">
+
+        <ImageView android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/bg_step_number" android:padding="11dp" android:importantForAccessibility="no" android:src="@drawable/ic_check" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_semibold"
+                    android:text="@string/intro_ready2_title"
+                    android:textColor="@color/ink"
+                    android:textSize="17sp" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/TextAppearance.Reflecxity.Body.Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/intro_ready2_body"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card"
+        android:orientation="horizontal"
+        android:padding="20dp">
+
+        <ImageView android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/bg_step_number" android:padding="11dp" android:importantForAccessibility="no" android:src="@drawable/ic_check" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_semibold"
+                    android:text="@string/intro_ready3_title"
+                    android:textColor="@color/ink"
+                    android:textSize="17sp" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/TextAppearance.Reflecxity.Body.Secondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/intro_ready3_body"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>
+</ScrollView>

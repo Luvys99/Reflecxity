@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 시작 화면 그림: 내 목소리 파형 + 비행 항로 (시안 C, #80) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="342dp" android:height="150dp"
+    android:viewportWidth="342" android:viewportHeight="150">
+    <path android:pathData="M10,130 C90,20 250,20 332,120" android:strokeColor="#C9B99F" android:strokeWidth="2" android:strokeLineCap="round" />
+    <group android:translateX="300" android:translateY="62" android:rotation="28">
+        <path android:fillColor="@color/sunset" android:pathData="M0,-10 L4,-2 L14,2 L14,5 L4,3 L3,11 L6,14 L6,16 L0,14 L-6,16 L-6,14 L-3,11 L-4,3 L-14,5 L-14,2 L-4,-2 Z" />
+    </group>
+    <path android:pathData="M51,144 L51,133" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M63,144 L63,123" android:strokeColor="@color/sunset" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M75,144 L75,109" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M87,144 L87,93" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M99,144 L99,113" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M111,144 L111,77" android:strokeColor="@color/sunset" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M123,144 L123,55" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M135,144 L135,89" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M147,144 L147,67" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M159,144 L159,47" android:strokeColor="@color/sunset" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M171,144 L171,73" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M183,144 L183,47" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M195,144 L195,67" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M207,144 L207,89" android:strokeColor="@color/sunset" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M219,144 L219,55" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M231,144 L231,77" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M243,144 L243,113" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M255,144 L255,93" android:strokeColor="@color/sunset" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M267,144 L267,109" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M279,144 L279,123" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+    <path android:pathData="M291,144 L291,133" android:strokeColor="@color/sky" android:strokeWidth="6" android:strokeLineCap="round" />
+</vector>
