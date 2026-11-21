@@ -19,6 +19,9 @@ executor = ThreadPoolExecutor()
 DEFAULT_SAMPLE_RATE = "40000"
 DEFAULT_CPU_CORES = 4
 
+# 학습 횟수 (녹음 전체를 몇 번 훑나). 2는 결과가 거의 기계음이었고, 10부터 녹음 주인이 듣기에 괜찮았고 20·30은 10과 차이가 거의 없었다 (#65)
+TRAIN_EPOCHS = 10
+
 
 # 학습 전 준비: 이전 학습의 실패 표시(logs/{uuid}/fail)를 지우고, 녹음 폴더와 녹음 파일 목록을 돌려준다
 # 녹음 폴더가 없으면 FileNotFoundError
@@ -143,9 +146,9 @@ async def train_voice_model(user_uuid, dataset_path, sample_rate, cpu_cores, voi
         "--model_name", user_uuid,
         "--rvc_version", "v2",
         "--sample_rate", sample_rate,
-        "--total_epoch", "2",
+        "--total_epoch", str(TRAIN_EPOCHS),
         "--pitch_guidance", "True",
-        "--save_every_epoch", "2",
+        "--save_every_epoch", str(TRAIN_EPOCHS),  # 마지막 epoch에만 모델 파일(.pth)을 만든다
         "--save_only_latest", "True",
         "--pretrained", "True"
     ]
@@ -155,7 +158,7 @@ async def train_voice_model(user_uuid, dataset_path, sample_rate, cpu_cores, voi
     # 학습 결과 확인: 모델(.pth)이나 인덱스(added_*.index)가 없으면 학습 실패로 본다
     model_dir = os.path.join(".", "logs", user_uuid)
     pth_files = [
-        f for f in os.listdir(model_dir) if f.endswith(".pth") and "_2e_" in f
+        f for f in os.listdir(model_dir) if f.endswith(".pth") and f"_{TRAIN_EPOCHS}e_" in f
     ]
     index_files = [
         f
