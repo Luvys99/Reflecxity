@@ -209,10 +209,11 @@ public class MainActivity extends AppCompatActivity {
                 targetTv.setText(R.string.kor);
                 targetTv2.setText(R.string.kor);
                 tts.setVisibility(View.INVISIBLE);
-                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR");  // 한국어
-                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ko-KR");
+                // 영어 → 한국어가 되므로 영어로 말한다 (#75: 원래는 반대 언어였다)
+                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
+                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-US");
                 speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true);
-                Log.d("Translation Activity", "STT Language : ko-KR");
+                Log.d("Translation Activity", "STT Language : en-US");
             } else {
                 targetLanguage = "en"; // 영어로 번역
                 selectTv.setText(R.string.kor);
@@ -220,10 +221,11 @@ public class MainActivity extends AppCompatActivity {
                 targetTv.setText(R.string.eng);
                 targetTv2.setText(R.string.eng);
                 tts.setVisibility(View.VISIBLE);
-                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");  // 영어
-                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-US");
+                // 한국어 → 영어가 되므로 한국어로 말한다 (#75)
+                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR");
+                speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "ko-KR");
                 speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true);
-                Log.d("Translation Activity", "STT Language : en-US");
+                Log.d("Translation Activity", "STT Language : ko-KR");
             }
             isKoreanToEnglish = !isKoreanToEnglish; // 상태 변경
 
