@@ -33,7 +33,7 @@
 ## 명령어
 - 빌드: 없음 (Python은 빌드 단계가 없고, Android 빌드는 이 저장소의 개선 범위 밖)
 - 테스트 (Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
-  - Main: `cd backend/MainServer && .venv/bin/python -m pytest tests` (앱이 받는 학습·TTS API 응답)
+  - Main: `cd backend/MainServer && .venv/bin/python -m pytest tests` (앱이 받는 업로드·학습·TTS API 응답)
   - Model: `cd backend/ModelServer && .venv/bin/python -m pytest tests` (학습·TTS 워커 규칙, Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
 - 로컬 실행 (Mac):
   - DB·Redis: `cd backend/MainServer && docker compose up -d` (Tailscale 먼저 켜기)
