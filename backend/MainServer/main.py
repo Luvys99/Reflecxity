@@ -46,7 +46,8 @@ DB_CONFIG = {
 # Model Server 주소 (.env 값이 있으면 config.ini 값을 덮어쓴다)
 config['MODEL_SERVER']['api_url'] = get_setting('MODEL_SERVER_URL', 'MODEL_SERVER', 'api_url')
 
-ALLOWED_EXTENSIONS = {"txt", "pdf", "png", "jpg", "jpeg", "zip", "ogg", "m4a"}
+# 녹음으로 받는 형식. 학습(ModelServer training.prepare_training)이 녹음으로 읽는 형식과 같게 둔다 (#60)
+ALLOWED_EXTENSIONS = {"m4a", "ogg", "wav"}
 
 # Redis 연결은 서버의 이벤트 루프 안에서 만든다 (아래 startup). 비동기 연결은 처음 쓰인 루프에 묶인다
 redis_client = None
@@ -142,7 +143,7 @@ def delete_user(user_uuid: str):
     "/user/{user_uuid}/upload",
     tags=["녹음 파일"],
     summary="녹음 업로드",
-    description="확장자를 검사하고(ogg, m4a 등) Model Server의 `POST /user/{user_uuid}/upload`로 그대로 전달한다. 파일은 Model Server 디스크에만 저장되고 DB에는 기록하지 않는다.",
+    description="확장자를 검사하고(m4a, ogg, wav만, 그 밖은 400) Model Server의 `POST /user/{user_uuid}/upload`로 그대로 전달한다. 파일은 Model Server 디스크에만 저장되고 DB에는 기록하지 않는다.",
 )
 async def upload_file(user_uuid: str, file: UploadFile = File(...)):
     if not allowed_file(file.filename, ALLOWED_EXTENSIONS):
