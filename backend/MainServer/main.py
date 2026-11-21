@@ -104,7 +104,7 @@ def read_root():
     return {"message": "파일 업로드 및 관리 시스템 API"}
 
 @app.post(
-    "/user",
+    "/users",
     tags=["사용자"],
     summary="사용자 생성",
     description="UUID를 발급하고 DB `users` 테이블에 저장한다. 로그인이 없어서 이 UUID가 사용자 신분증 역할을 한다. Model Server는 부르지 않는다.",
@@ -122,7 +122,7 @@ def create_user():
         raise HTTPException(status_code=500, detail="사용자 정보 저장 오류")
 
 @app.delete(
-    "/user/{user_uuid}",
+    "/users/{user_uuid}",
     tags=["사용자"],
     summary="사용자 삭제",
     description="Model Server의 `DELETE /user/{user_uuid}`로 녹음·모델 폴더를 지운 뒤 DB에서 사용자를 지운다.",
@@ -136,11 +136,11 @@ def delete_user(user_uuid: str):
         return {"message": "사용자 삭제 성공"}
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"사용자 삭제 中 오류 발생: {e}")
-        raise HTTPException(status_code=500, detail=f"사용자 삭제 中 오류 발생: {e}")
+        logging.error(f"사용자 삭제 중 오류 발생: {e}")
+        raise HTTPException(status_code=500, detail=f"사용자 삭제 중 오류 발생: {e}")
 
 @app.post(
-    "/user/{user_uuid}/upload",
+    "/users/{user_uuid}/recordings",
     tags=["녹음 파일"],
     summary="녹음 업로드",
     description="확장자를 검사하고(m4a, ogg, wav만, 그 밖은 400) Model Server의 `POST /user/{user_uuid}/upload`로 그대로 전달한다. 파일은 Model Server 디스크에만 저장되고 DB에는 기록하지 않는다.",
@@ -165,7 +165,7 @@ async def upload_file(user_uuid: str, file: UploadFile = File(...)):
 
 
 @app.get(
-    "/user/{user_uuid}/files",
+    "/users/{user_uuid}/recordings",
     tags=["녹음 파일"],
     summary="업로드한 파일 목록",
     description="Model Server의 `GET /user/{user_uuid}/files` 결과를 그대로 돌려준다.",
@@ -183,7 +183,7 @@ def get_user_files(user_uuid: str):
 
 
 @app.delete(
-    "/user/{user_uuid}/raw/{filename}",
+    "/users/{user_uuid}/recordings/{filename}",
     tags=["녹음 파일"],
     summary="업로드한 파일 삭제",
     description="Model Server의 `DELETE /user/{user_uuid}/raw/{filename}`을 부른다.",
@@ -200,49 +200,66 @@ async def delete_file(user_uuid: str, filename: str):
         raise HTTPException(status_code=500, detail=f"파일 삭제 중 오류 발생: {e}")
 
 
-@app.get(
-    "/user/{user_uuid}/modelcheck",
-    tags=["학습"],
-    summary="학습 완료 확인",
-    description="작업 정보(Redis `job:{id}`)의 상태로 답한다. success → \"모델 파일 존재\", fail → 500, 대기·진행 중(또는 학습 요청 없음) → \"모델 파일 없음\". 워커가 꺼낸 뒤 `MODEL_GENERATION_TIMEOUT`(기본 10분)이 지나도 안 끝나면 500 (#42).",
-)
-async def check_model(user_uuid: str):
+async def read_training_status(user_uuid):
+    """사용자의 학습 상태 하나로 답한다 (#63). 앱은 문장 대신 status 값을 보고 판단한다"""
     job = await find_train_job(redis_client, user_uuid)
-    if job is None or job["status"] == "queued":
-        return {"message": "모델 파일 없음"}
+    if job is None:
+        return {"status": "none"}
     if job["status"] == "success":
-        logging.info(f"모델 생성 완료: {user_uuid}")
-        return {"message": "모델 파일 존재"}
+        return {"status": "success"}
     if job["status"] == "fail":
         logging.error(f"모델 생성 실패: {user_uuid}: {job.get('error', '')}")
-        raise HTTPException(status_code=500, detail="모델 생성 실패")
+        return {"status": "fail", "error": "모델 생성 실패"}
+
+    # 대기·진행 중: 내 앞에 끝나지 않은 작업 수 + 1 (진행 중이면 1)
+    position = await count_jobs_ahead(redis_client, job) + 1
+    if job["status"] == "queued":
+        return {"status": "queued", "position": position}
 
     # progress: 워커가 너무 오래 쥐고 있으면 (죽고 다시 안 켜짐) 실패로 응답한다. 작업 정보는 바꾸지 않는다
     elapsed_ms = await measure_working_ms(redis_client, job)
     if elapsed_ms is not None and elapsed_ms >= MODEL_GENERATION_TIMEOUT_SECONDS * 1000:
         logging.error(f"모델 생성 시간 초과: {user_uuid}: {elapsed_ms / 1000:.0f}초")
-        raise HTTPException(status_code=500, detail="모델 생성 시간 초과")
-    return {"message": "모델 파일 없음"}
+        return {"status": "fail", "error": "모델 생성 시간 초과"}
+    response = {"status": "progress", "position": position}
+    # 학습을 시작한 지 지난 시간: 앱이 남은 시간을 보여 준다 (#89)
+    if elapsed_ms is not None:
+        response["elapsed_seconds"] = elapsed_ms // 1000
+    return response
 
 
 @app.post(
-    "/user/{user_uuid}/models",
+    "/users/{user_uuid}/training",
     tags=["학습"],
     summary="학습 요청 (대기열에 추가)",
-    description="Redis에 작업 정보(`job:{id}`, queued)를 만들고 `stream:train`에 넣는다. Windows의 학습 워커가 꺼내 학습한다. 같은 사용자의 학습이 대기·진행 중이면 다시 넣지 않는다 (#42).",
+    description="Redis에 작업 정보(`job:{id}`, queued)를 만들고 `stream:train`에 넣는다. Windows의 학습 워커가 꺼내 학습한다. 같은 사용자의 학습이 대기·진행 중이면 다시 넣지 않는다 (#42). 어느 쪽이든 `GET /users/{user_uuid}/training`과 같은 모양으로 지금 상태를 돌려준다 (#63).",
 )
-async def create_user_model(user_uuid: str):
+async def request_training(user_uuid: str):
     job_id = await enqueue_train_job(redis_client, user_uuid)
     if job_id is None:
         logging.warning(f"모델 생성 중이거나 대기열에 있음: {user_uuid}")
-        return {"message": "이미 모델 생성 요청이 진행 중이거나 대기열에 있습니다."}
+    else:
+        logging.info(f"모델 생성 요청이 대기열에 추가됨: {user_uuid} (작업 {job_id})")
+    return await read_training_status(user_uuid)
 
-    logging.info(f"모델 생성 요청이 대기열에 추가됨: {user_uuid} (작업 {job_id})")
-    return {"message": "모델 생성 요청이 대기열에 추가되었습니다.", "model_id": user_uuid}
+
+@app.get(
+    "/users/{user_uuid}/training",
+    tags=["학습"],
+    summary="학습 상태",
+    description="""작업 정보(Redis `job:{id}`)로 학습 상태를 답한다 (#63).
+- `none`: 학습 요청이 없음
+- `queued`: 대기 중. `position`은 내 앞에 끝나지 않은 작업 수 + 1. 앱은 "대기 순번 (position - 1)번"으로 보여 준다
+- `progress`: 학습 중. `position`은 1, `elapsed_seconds`는 워커가 학습을 시작한 뒤 지난 초 (#89)
+- `success`: 학습 끝
+- `fail`: 학습 실패. 워커가 꺼낸 뒤 `MODEL_GENERATION_TIMEOUT`(기본 10분)이 지나도 안 끝나도 실패로 본다 (#42). 이유는 `error`""",
+)
+async def get_training_status(user_uuid: str):
+    return await read_training_status(user_uuid)
 
 
 @app.post(
-    "/user/{user_uuid}/tts",
+    "/users/{user_uuid}/tts",
     tags=["TTS"],
     summary="TTS (텍스트 → 내 목소리)",
     description="Redis에 TTS 작업(`job:{id}`)을 넣고 `stream:tts`에 번호를 넣는다. Windows의 TTS 워커가 끝 신호(`job:{id}:done`)를 줄 때까지 `BLPOP`으로 기다렸다가(최대 `TTS_WAIT_SECONDS`, 기본 90초) 결과 음성(`job:{id}:result`)을 내려준다. 빈 문장·학습이 끝나지 않은 사용자는 400, 워커 실패는 500, 시간 초과는 504. pitch를 안 보내면 학습 때 잰 자동 피치, 그것도 없으면 `config.ini`의 기본값(3) (워커가 고른다, #59).",
@@ -273,37 +290,15 @@ async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: Optio
 
 # 대기열 상태 조회 엔드포인트
 @app.get(
-    "/queue_status",
+    "/training-queue",
     tags=["학습"],
     summary="전체 대기열 크기",
-    description="학습 작업 중 대기(`queue_size`)와 진행(`active_tasks`) 수 (Redis 기준, #42).",
+    description="학습 작업 중 대기(`queued`)와 진행(`progress`) 수 (Redis 기준, #42).",
 )
 async def get_queue_status():
     counts = await count_train_jobs_by_status(redis_client)
     logging.info(f"대기열 크기: {counts['queued']}, 진행 중: {counts['progress']}")
-    return {"queue_size": counts["queued"], "active_tasks": counts["progress"]}
-
-# 사용자 대기열 정보 조회 엔드포인트
-@app.get(
-    "/user/{user_uuid}/queue",
-    tags=["학습"],
-    summary="내 대기열 위치",
-    description="학습이 대기·진행 중이면 위치를 돌려준다: 내 앞에 끝나지 않은 작업 수 + 1 (진행 중이면 1). 앱은 1을 \"생성 중\", 2 이상을 \"대기 순번 (위치 - 1)번\"으로 보여 준다. 학습 중이면 `elapsed_seconds`(워커가 학습을 시작한 뒤 지난 초)도 준다 (#89). 끝났거나 요청이 없으면 \"대기열에 추가되지 않았습니다\" (#42).",
-)
-async def get_user_queue_info(user_uuid: str):
-    job = await find_train_job(redis_client, user_uuid)
-    if job is None or job["status"] not in ("queued", "progress"):
-        return {"status": "대기열에 추가되지 않았습니다."}
-
-    position = await count_jobs_ahead(redis_client, job) + 1
-    logging.info(f"사용자 {user_uuid}는 대기열에 있습니다. 위치: {position}")
-    response = {"status": "대기열에 있습니다.", "position": position}
-    # 학습 중이면 학습을 시작한 지 지난 시간: 앱이 남은 시간을 보여 준다 (#89)
-    if job["status"] == "progress":
-        elapsed_ms = await measure_working_ms(redis_client, job)
-        if elapsed_ms is not None:
-            response["elapsed_seconds"] = elapsed_ms // 1000
-    return response
+    return {"queued": counts["queued"], "progress": counts["progress"]}
 
 # 서버 온라인 상태 확인 엔드포인트
 @app.get(

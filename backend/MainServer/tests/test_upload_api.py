@@ -28,7 +28,7 @@ def sent_files(monkeypatch):
 
 
 def upload(api, filename):
-    return api.post("/user/userA/upload", files={"file": (filename, b"fake-audio")})
+    return api.post("/users/userA/recordings", files={"file": (filename, b"fake-audio")})
 
 
 @pytest.mark.parametrize("filename", ["voice.m4a", "voice.ogg", "voice.wav", "VOICE.M4A"])
