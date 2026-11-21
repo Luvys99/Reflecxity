@@ -349,7 +349,7 @@ public class DataLearningActivity extends AppCompatActivity {
             String formattedDuration = formatDuration(totalDuration);
             new MaterialAlertDialogBuilder(this)
                     .setTitle(getString(R.string.record_submit_title, selectedFiles.size()))
-                    .setMessage(getString(R.string.record_submit_message, formattedDuration, estimateTrainingMinutes(totalDuration)))
+                    .setMessage(getString(R.string.record_submit_message, formattedDuration, TrainingTime.estimateMinutes(totalDuration)))
                     .setPositiveButton(R.string.record_submit, (dialog, which) -> submitSelectedFiles())
                     .setNegativeButton(R.string.cancel, null)
                     .show();
@@ -416,13 +416,6 @@ public class DataLearningActivity extends AppCompatActivity {
     private void showNextReadText() {
         readTextIndex = (readTextIndex + 1) % readTexts.length;
         txtReadText.setText(readTexts[readTextIndex]);
-    }
-
-    // 예상 학습 시간(분): 녹음 2분 → 3분 22초, 5분 → 5분 7초, 6분 → 6분 8초 측정값(10 epoch, Windows RTX 3060, #65)으로 맞춘 직선
-    // 학습 워커가 다른 사람 학습 중이면 더 걸린다 (화면 문구에 적음)
-    private int estimateTrainingMinutes(long recordingMs) {
-        double recordingMinutes = recordingMs / 60000.0;
-        return (int) Math.round(2 + 0.7 * recordingMinutes);
     }
 
     // 3분 12초 → "3:12"

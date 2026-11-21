@@ -6,7 +6,7 @@
 아래 말하기 버튼을 눌러 말해 보세요</string>
     <string name="result_hint">번역한 문장이 여기에 나와요</string>
     <string name="learning_guideline">1. 조용한 곳에서 녹음할수록 내 목소리와 더 닮아요.\n2. 모두 합쳐 5분 이상 녹음해 주세요. 여러 번 나눠 녹음해도 돼요.\n3. 책이나 기사를 천천히 또박또박 읽어 주세요. 녹음하는 동안 읽을 글도 보여 드려요.\n\n목소리 높이는 학습할 때 자동으로 맞춰요.</string>
-    <string name="learning_error">다음과 같은 사유로 오류가 발생했을 수 있습니다.\n\n1. 목소리 크기가 작아 제대로 인식이 안됨\n2. 녹음된 목소리의 양이 작아 학습량이 부족함\n3. 외부 소음이 심함\n4. 녹음 파일 손상됨\n\n학습을 처음부터 다시 시도해주세요.</string>
+    <string name="learning_error">녹음 소리가 작거나, 녹음이 짧거나, 주변 소리가 컸을 수 있어요. 조용한 곳에서 처음부터 다시 녹음해 주세요.</string>
     <string name="kor">한국어</string>
     <string name="eng">영어</string>
     <string name="term"><u>이용약관</u></string>
@@ -139,4 +139,29 @@
     <string name="transfer_remaining">%1$d초 동안 쓸 수 있어요</string>
     <string name="transfer_hidden">버튼을 누르면 QR 코드가 나와요</string>
     <string name="qrscan_guide">옮겨 올 기기의 QR 코드를 찍어 주세요</string>
+
+    <!-- 학습 중 (#93) -->
+    <string name="training_title">내 목소리를 배우는 중</string>
+    <string name="training_body">앱을 꺼도 학습은 계속돼요. 끝나면 알림으로 알려 드려요.</string>
+    <string name="training_remaining_label">남은 시간</string>
+    <string name="training_remaining">약 %1$d분</string>
+    <string name="training_almost">곧 끝나요</string>
+    <string name="training_waiting">순서 기다리는 중</string>
+    <string name="training_waiting_ahead">앞에 %1$d명이 학습 중이에요</string>
+    <string name="training_preparing">준비 중</string>
+    <string name="step_prepare">준비하기</string>
+    <string name="step_upload">녹음 올리기</string>
+    <string name="step_request">학습 요청</string>
+    <string name="step_train">목소리 학습</string>
+    <string name="step_train_now">목소리 학습 중</string>
+    <string name="step_train_wait">순서 기다리는 중 · 앞에 %1$d명</string>
+    <string name="step_train_fail">목소리 학습 실패</string>
+    <string name="training_tips_title">기다리는 동안</string>
+    <string name="training_tip1">학습 끝에 내 목소리 높이를 재서, 번역한 말을 내 목소리 높이로 자동으로 맞춰요.</string>
+    <string name="training_tip2">학습 시간은 녹음 길이에 따라 달라요. 녹음 5분이면 약 5분이에요.</string>
+    <string name="training_done_title">내 목소리가 준비됐어요</string>
+    <string name="training_done_body">이제 한국어로 쓰거나 말하면 내 목소리로 영어를 들려 드려요.</string>
+    <string name="training_done_button">말해 보러 가기</string>
+    <string name="training_fail_title">학습하지 못했어요</string>
+    <string name="training_restart">처음부터 다시 하기</string>
 </resources>

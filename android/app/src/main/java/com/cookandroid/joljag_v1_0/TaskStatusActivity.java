@@ -20,6 +20,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
@@ -31,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URLConnection;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -64,6 +67,20 @@ public class TaskStatusActivity extends AppCompatActivity {
     private boolean isPushCreated;
     private boolean isMainEntryTime;
     private boolean server_status_main = false;
+
+    // 남은 시간 (#93)
+    private CircularProgressIndicator progressRing;
+    private View etaBox;
+    private View tipsBox;
+    private TextView txtEta;
+    private TextView txtEtaLabel;
+    private long estimatedSeconds;
+    private long elapsedBaseSeconds = -1;
+    private long elapsedBaseAt;
+    private boolean isWaiting;
+    private int jobsAhead;
+    private final Handler etaHandler = new Handler();
+    private Runnable etaTicker;
     private boolean server_status_model = false;
 
     private static final String MainAPI_URL = BuildConfig.MainAPI_URL;
@@ -113,28 +130,14 @@ public class TaskStatusActivity extends AppCompatActivity {
         progressBar_modelStatus.setVisibility(View.VISIBLE);
         imageView_modelStatus.setVisibility(View.GONE);
 
-        // StatusBar, NavigationBar 색상 변경
-        Window window = getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.setStatusBarColor(ContextCompat.getColor(this, R.color.background)); // 원하는 색상으로 변경
-        window.setNavigationBarColor(ContextCompat.getColor(this, R.color.background));
-
-        // 시스템 다크 모드 설정 확인
-        int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        switch (currentNightMode) {
-            case Configuration.UI_MODE_NIGHT_YES:
-                // 다크모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_NO:
-                // 라이트모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_UNDEFINED:
-                // 시스템 설정을 알 수 없을 때 (기본 모드 적용)
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-        }
+        // 남은 시간: 녹음 길이로 예상 학습 시간을 구해 둔다 (#93)
+        progressRing = findViewById(R.id.progress_ring);
+        etaBox = findViewById(R.id.eta_box);
+        txtEta = findViewById(R.id.txt_eta);
+        txtEtaLabel = findViewById(R.id.txt_eta_label);
+        tipsBox = findViewById(R.id.tips_box);
+        Set<String> selectedFilePaths = sharedPreferences.getStringSet("selectedFilePaths", new HashSet<>());
+        estimatedSeconds = TrainingTime.estimateSeconds(TrainingTime.totalDurationMs(selectedFilePaths));
 
         homeButton.setOnClickListener(v -> {
             final String userUUID = sharedPreferences.getString("UUID", null);
@@ -190,8 +193,6 @@ public class TaskStatusActivity extends AppCompatActivity {
             startActivity(mainIntent);
             finish();
         });
-        nextButton.setTextColor(getResources().getColor(R.color.grey200));
-        nextButton.setBackgroundColor(getResources().getColor(R.color.grey500));
 
         checkUser();
         // Task 시작
@@ -201,28 +202,28 @@ public class TaskStatusActivity extends AppCompatActivity {
     private void checkUser() {
         if (isUserCreated) {
             runOnUiThread(() -> {
-                userCreationStatus.setText("사용자 생성 상태: 완료");
+                userCreationStatus.setText(R.string.step_prepare);
                 progressBar_creationStatus.setVisibility(View.GONE);
                 imageView_creationStatus.setVisibility(View.VISIBLE);
             });
         }
         if (isFilesUploaded) {
             runOnUiThread(() -> {
-                fileUploadStatus.setText("파일 업로드 상태: 완료");
+                fileUploadStatus.setText(R.string.step_upload);
                 progressBar_uploadStatus.setVisibility(View.GONE);
                 imageView_uploadStatus.setVisibility(View.VISIBLE);
             });
         }
         if (isModelRequest) {
             runOnUiThread(() -> {
-                modelCreationRequest.setText("모델 생성 요청: 완료");
+                modelCreationRequest.setText(R.string.step_request);
                 progressBar_modelRequest.setVisibility(View.GONE);
                 imageView_modelRequest.setVisibility(View.VISIBLE);
             });
         }
         if (isModelCreated) {
             runOnUiThread(() -> {
-                modelCreationStatus.setText("모델 생성 상태: 완료");
+                modelCreationStatus.setText(R.string.step_train);
                 progressBar_modelStatus.setVisibility(View.GONE);
                 imageView_modelStatus.setVisibility(View.VISIBLE);
             });
@@ -275,7 +276,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                         editor.apply();
 
                         runOnUiThread(() -> {
-                            userCreationStatus.setText("사용자 생성 상태: 완료");
+                            userCreationStatus.setText(R.string.step_prepare);
                             progressBar_creationStatus.setVisibility(View.GONE);
                             imageView_creationStatus.setVisibility(View.VISIBLE);
                             listener.onUserCreated(userUuid);
@@ -424,7 +425,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                 editor.putBoolean("isFilesUploaded", isFilesUploaded);
                 editor.apply();
 
-                runOnUiThread(() -> fileUploadStatus.setText("파일 업로드 상태: 완료"));
+                runOnUiThread(() -> fileUploadStatus.setText(R.string.step_upload));
                 progressBar_uploadStatus.setVisibility(View.GONE);
                 imageView_uploadStatus.setVisibility(View.VISIBLE);
                 checkIfAllTasksCompleted(userUuid);
@@ -538,7 +539,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                         editor.apply();
 
                         runOnUiThread(() -> {
-                            modelCreationRequest.setText("모델 생성 요청: 완료");
+                            modelCreationRequest.setText(R.string.step_request);
                             progressBar_modelRequest.setVisibility(View.GONE);
                             imageView_modelRequest.setVisibility(View.VISIBLE);
                         });
@@ -579,6 +580,8 @@ public class TaskStatusActivity extends AppCompatActivity {
                         JSONObject jsonResponse = new JSONObject(responseBodyString);
                         String status = jsonResponse.getString("status");
                         int position = jsonResponse.getInt("position");
+                        // 학습 중이면 서버가 학습을 시작한 뒤 지난 초를 준다 (#89). 없으면 -1
+                        int elapsedSeconds = jsonResponse.optInt("elapsed_seconds", -1);
 
                         runOnUiThread(() -> {
                             // 대기열 상태 로그
@@ -586,11 +589,13 @@ public class TaskStatusActivity extends AppCompatActivity {
 
                             if (position == 1) {
                                 // 대기열 1번 -> 모델 생성 시작
-                                runOnUiThread(() -> modelCreationStatus.setText("모델 생성 상태: 생성 중"));
+                                modelCreationStatus.setText(R.string.step_train_now);
+                                showTraining(elapsedSeconds);
 
                             } else if (position >= 2) {
                                 // 대기열에 있음
-                                runOnUiThread(() -> modelCreationStatus.setText("모델 생성 상태: 대기 순번 - " + (position - 1) + "번"));
+                                modelCreationStatus.setText(getString(R.string.step_train_wait, position - 1));
+                                showWaiting(position - 1);
                             }
                         });
 
@@ -608,9 +613,76 @@ public class TaskStatusActivity extends AppCompatActivity {
     }
 
 
+    // 학습 중: 남은 시간 = 예상 학습 시간 - 지난 시간. 서버가 지난 시간을 주면 그 값으로 맞추고, 사이에는 1초마다 앱이 센다 (#93)
+    private void showTraining(int elapsedFromServer) {
+        isWaiting = false;
+        long now = System.currentTimeMillis();
+        if (elapsedFromServer >= 0) {
+            elapsedBaseSeconds = elapsedFromServer;
+            elapsedBaseAt = now;
+        } else if (elapsedBaseSeconds < 0) {
+            elapsedBaseSeconds = 0; // 서버가 안 주면 학습 중을 처음 본 때부터 센다
+            elapsedBaseAt = now;
+        }
+        startEtaTicker();
+    }
+
+    private void showWaiting(int jobsAhead) {
+        isWaiting = true;
+        this.jobsAhead = jobsAhead;
+        startEtaTicker();
+    }
+
+    private void startEtaTicker() {
+        if (etaTicker != null) {
+            updateEta();
+            return;
+        }
+        etaTicker = new Runnable() {
+            @Override
+            public void run() {
+                updateEta();
+                etaHandler.postDelayed(this, 1000);
+            }
+        };
+        etaHandler.post(etaTicker);
+    }
+
+    private void updateEta() {
+        if (isWaiting) {
+            txtEtaLabel.setText(getString(R.string.training_waiting_ahead, jobsAhead));
+            txtEta.setText(R.string.training_waiting);
+            return;
+        }
+        long elapsed = elapsedBaseSeconds + (System.currentTimeMillis() - elapsedBaseAt) / 1000;
+        long remaining = estimatedSeconds - elapsed;
+        txtEtaLabel.setText(R.string.training_remaining_label);
+        txtEta.setText(remaining <= 30 ? getString(R.string.training_almost) : getString(R.string.training_remaining, (int) Math.ceil(remaining / 60.0)));
+        if (progressRing.isIndeterminate()) {
+            // 보이는 동안에는 바꿀 수 없어서 잠깐 숨긴다
+            progressRing.setVisibility(View.INVISIBLE);
+            progressRing.setIndeterminate(false);
+            progressRing.setVisibility(View.VISIBLE);
+        }
+        progressRing.setProgressCompat((int) Math.min(99, elapsed * 100 / Math.max(1, estimatedSeconds)), true);
+    }
+
+    // 끝(완료·실패): 남은 시간 대신 아이콘, 기다리는 동안 안내는 숨긴다
+    private void showFinished(int iconRes, int tintRes) {
+        if (etaTicker != null) {
+            etaHandler.removeCallbacks(etaTicker);
+        }
+        progressRing.setVisibility(View.GONE);
+        etaBox.setVisibility(View.GONE);
+        tipsBox.setVisibility(View.GONE);
+        status_icon.setImageResource(iconRes);
+        status_icon.setColorFilter(ContextCompat.getColor(this, tintRes));
+        status_icon.setVisibility(View.VISIBLE);
+    }
+
     private void checkModelPeriodically(String userUuid) {
         Handler handler = new Handler();
-        handler.postDelayed(() -> checkModel(userUuid), 30000); // (delay/1000) 초마다 모델 상태를 다시 확인
+        handler.postDelayed(() -> checkModel(userUuid), 10000); // 10초마다 모델 상태를 다시 확인 (학습이 약 5분이라 30초는 늦었다, #93)
     }
 
     private void checkModel(String userUuid) {
@@ -648,7 +720,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                                 saveMainEntryTime(); // 진입 시간 저장
 
                                 runOnUiThread(() -> {
-                                    modelCreationStatus.setText("모델 생성 상태: 완료");
+                                    modelCreationStatus.setText(R.string.step_train);
                                     progressBar_modelStatus.setVisibility(View.GONE);
                                     imageView_modelStatus.setVisibility(View.VISIBLE);
                                 });
@@ -667,10 +739,10 @@ public class TaskStatusActivity extends AppCompatActivity {
                     }
                 } else if (response.code() == 500) {
                     runOnUiThread(() -> {
-                        status_icon.setImageDrawable(getResources().getDrawable(R.drawable.cloud_alert));
-                        info_title.setText("학습 오류 발생");
+                        showFinished(R.drawable.cloud_alert, R.color.danger);
+                        info_title.setText(R.string.training_fail_title);
                         info_txt.setText(getString(R.string.learning_error));
-                        modelCreationStatus.setText("모델 생성 상태: 오류");
+                        modelCreationStatus.setText(R.string.step_train_fail);
                         progressBar_modelStatus.setVisibility(View.GONE);
                         homeButton.setVisibility(View.VISIBLE);
                         nextButton.setVisibility(View.GONE);
@@ -763,13 +835,11 @@ public class TaskStatusActivity extends AppCompatActivity {
     private void checkIfAllTasksCompleted(String userUuid) {
         if (isUserCreated && isFilesUploaded && isModelRequest && isModelCreated) {
             runOnUiThread(() -> {
-                status_icon.setImageDrawable(getResources().getDrawable(R.drawable.cloud_done));
-                info_title.setText("준비 완료!");
-                info_txt.setText("이제 서비스를 이용할 준비가 되었어요.\n아래의 다음 버튼을 눌러 메인 화면으로 이동해주세요.");
+                showFinished(R.drawable.check_circle, R.color.success);
+                info_title.setText(R.string.training_done_title);
+                info_txt.setText(R.string.training_done_body);
                 homeButton.setVisibility(View.GONE);
                 nextButton.setVisibility(View.VISIBLE);
-                nextButton.setTextColor(getResources().getColor(R.color.grey900));
-                nextButton.setBackgroundColor(getResources().getColor(R.color.btn_green));
 
                 Intent serviceIntent = new Intent(TaskStatusActivity.this, TaskCheckService.class);
                 stopService(serviceIntent);
