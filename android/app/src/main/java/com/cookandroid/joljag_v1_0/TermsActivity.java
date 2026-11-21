@@ -2,21 +2,16 @@ package com.cookandroid.joljag_v1_0;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.AssetManager;
 import android.os.Bundle;
-import android.text.method.ScrollingMovementMethod;
 import android.view.View;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.TextView;
-import android.content.res.Configuration;
+import android.widget.CheckBox;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 
 public class TermsActivity extends AppCompatActivity {
@@ -36,25 +31,26 @@ public class TermsActivity extends AppCompatActivity {
         editor.putBoolean("isTermConfirm", isTermConfirm);
         editor.apply();
 
-        TextView termsTxt = findViewById(R.id.terms_txt);
-
-        AssetManager assetManager = getResources().getAssets();
-        InputStream inputStream = null;
-
-        try {
-            inputStream = assetManager.open("terms.txt");
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            String str = null;
-
+        // 약관 전문은 assets/terms.txt를 읽어 "약관 전문 보기" 창으로 보여 준다 (#80)
+        try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(getAssets().open("terms.txt")))) {
+            String str;
             while ((str = bufferedReader.readLine()) != null) {
                 readStr += str + "\n";
             }
-            termsTxt.setText(readStr);
-            termsTxt.setMovementMethod(new ScrollingMovementMethod());
-            bufferedReader.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        findViewById(R.id.button_full_terms).setOnClickListener(v ->
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.terms_full)
+                        .setMessage(readStr)
+                        .setPositiveButton(R.string.close, null)
+                        .show());
+
+        // 동의 체크를 해야 다음으로 갈 수 있다
+        View confirmButton = findViewById(R.id.button_confirm);
+        CheckBox agreeCheck = findViewById(R.id.check_agree);
+        agreeCheck.setOnCheckedChangeListener((buttonView, isChecked) -> confirmButton.setEnabled(isChecked));
 
         findViewById(R.id.button_confirm).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -73,27 +69,5 @@ public class TermsActivity extends AppCompatActivity {
                 finish();
             }
         });
-
-        Window window = getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.setStatusBarColor(ContextCompat.getColor(this, R.color.background)); // 원하는 색상으로 변경
-        window.setNavigationBarColor(ContextCompat.getColor(this, R.color.background));
-
-        // 시스템 다크 모드 설정 확인
-        int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        switch (currentNightMode) {
-            case Configuration.UI_MODE_NIGHT_YES:
-                // 다크모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_NO:
-                // 라이트모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_UNDEFINED:
-                // 시스템 설정을 알 수 없을 때 (기본 모드 적용)
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-        }
     }
 }

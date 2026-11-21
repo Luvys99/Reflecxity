@@ -36,8 +36,8 @@
         <item name="android:insetTop">0dp</item>
         <item name="android:insetBottom">0dp</item>
         <item name="cornerRadius">16dp</item>
-        <item name="backgroundTint">@color/sky</item>
-        <item name="android:textColor">@color/on_sky</item>
+        <item name="backgroundTint">@color/btn_primary_bg</item>
+        <item name="android:textColor">@color/btn_primary_text</item>
         <item name="android:textSize">17sp</item>
         <item name="android:fontFamily">@font/pretendard_bold</item>
         <item name="android:letterSpacing">0</item>

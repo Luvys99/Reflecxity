@@ -13,4 +13,47 @@
     <string name="eng">영어</string>
     <string name="term"><u>이용약관</u></string>
     <string name="test_txt">Test Text</string>
+
+    <!-- 시작하기 (#80) -->
+    <string name="intro_hero_title">어디서든 내 목소리로,\n외국어로 말해요</string>
+    <string name="intro_hero_body">여행 전에 5분만 녹음하면\n번역한 문장을 내 목소리로 들려 드려요</string>
+    <string name="intro_steps_title">이렇게 사용해요</string>
+    <string name="intro_steps_body">처음 한 번만 녹음하고 학습하면 돼요</string>
+    <string name="intro_step1_title">녹음하기</string>
+    <string name="intro_step1_time">5분</string>
+    <string name="intro_step1_body">조용한 곳에서 책이나 기사를 소리 내어 읽어 주세요. 여러 번 나눠 녹음해도 돼요.</string>
+    <string name="intro_step2_title">목소리 학습</string>
+    <string name="intro_step2_time">약 5분</string>
+    <string name="intro_step2_body">서버가 내 목소리를 배우고, 목소리 높이도 자동으로 맞춰요. 앱을 꺼도 계속돼요.</string>
+    <string name="intro_step3_title">내 목소리로 말하기</string>
+    <string name="intro_step3_time">약 3초</string>
+    <string name="intro_step3_body">한국어로 쓰거나 말하면 영어로 번역해 내 목소리로 들려 드려요.</string>
+    <string name="intro_ready_title">녹음 전에 준비해요</string>
+    <string name="intro_ready_body">좋은 녹음이 내 목소리와 더 닮은 결과를 만들어요</string>
+    <string name="intro_ready1_title">조용한 곳</string>
+    <string name="intro_ready1_body">TV, 음악, 바람 소리가 없는 곳이 좋아요.</string>
+    <string name="intro_ready2_title">읽을 글</string>
+    <string name="intro_ready2_body">책, 기사, 블로그 무엇이든 괜찮아요. 녹음 화면에서도 글을 보여 드려요.</string>
+    <string name="intro_ready3_title">인터넷 연결</string>
+    <string name="intro_ready3_body">학습과 번역은 서버에서 해요.</string>
+    <string name="intro_next">다음</string>
+    <string name="intro_start">시작하기</string>
+    <string name="welcome_tagline">어디서든 내 목소리로, 외국어로 말해요</string>
+    <string name="welcome_start">시작하기</string>
+    <string name="welcome_transfer">다른 기기에서 옮겨 오기</string>
+    <string name="terms_title">시작하기 전에\n꼭 알아 두세요</string>
+    <string name="terms_body">내 목소리는 이렇게 쓰이고 보관돼요</string>
+    <string name="terms_point1_title">녹음은 목소리 학습에만 써요</string>
+    <string name="terms_point1_body">올린 녹음으로 내 목소리 모델을 만들고, 번역한 문장을 그 목소리로 바꿀 때만 써요.</string>
+    <string name="terms_point2_title">녹음과 목소리 모델은 서버에 보관돼요</string>
+    <string name="terms_point2_body">설정의 \"다시 학습하기\"로 언제든 지울 수 있어요.</string>
+    <string name="terms_point3_title">이름·전화번호는 받지 않아요</string>
+    <string name="terms_point3_body">계정 대신 기기마다 만든 무작위 번호로 내 목소리를 구분해요.</string>
+    <string name="terms_point4_title">번역은 Google 번역을 써요</string>
+    <string name="terms_point4_body">번역할 문장은 Google 번역 서버로 보내져요.</string>
+    <string name="terms_full">약관 전문 보기</string>
+    <string name="terms_agree_check">위 내용을 확인했고 약관에 동의해요</string>
+    <string name="terms_agree">동의하고 녹음하러 가기</string>
+    <string name="terms_disagree">동의하지 않아요</string>
+    <string name="close">닫기</string>
 </resources>
