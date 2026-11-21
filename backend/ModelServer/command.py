@@ -6,8 +6,7 @@ import asyncio
 async def run_command_async(command, model_id, step_name):
     process = None
     try:
-        if step_name != "autopitch":
-            print(f"[Model {model_id}] {step_name} 단계 시작...")
+        print(f"[Model {model_id}] {step_name} 단계 시작...")
 
         process = await asyncio.create_subprocess_exec(
             *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
@@ -40,8 +39,7 @@ async def run_command_async(command, model_id, step_name):
                 f"{step_name} 단계 실행 중 오류 발생: 프로세스 종료 코드 {process.returncode}"
             )
 
-        if step_name != "autopitch":
-            print(f"[Model {model_id}] {step_name} 단계 완료")
+        print(f"[Model {model_id}] {step_name} 단계 완료")
 
     except Exception as e:
         print(f"[Model {model_id}] {step_name} 단계 실행 중 오류 발생: {e}")

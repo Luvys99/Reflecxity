@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import requests
 from dotenv import load_dotenv
 
-from file_manager import FileHandler
 from db_manager import DBManager
 from utils import allowed_file, generate_uuid
 from train_queue import (
@@ -44,15 +43,10 @@ DB_CONFIG = {
     "database": get_setting('DB_NAME', 'DATABASE', 'database'),
 }
 
-# Model Server 주소 (FileHandler도 config에서 읽으므로 config 값을 덮어쓴다)
+# Model Server 주소 (.env 값이 있으면 config.ini 값을 덮어쓴다)
 config['MODEL_SERVER']['api_url'] = get_setting('MODEL_SERVER_URL', 'MODEL_SERVER', 'api_url')
 
 ALLOWED_EXTENSIONS = {"txt", "pdf", "png", "jpg", "jpeg", "zip", "ogg", "m4a"}
-MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
-CHUNK_SIZE = 1024 * 1024  # 1MB
-
-BASE_DIR = os.getcwd()
-config['FILE_PATH'] = {'base_dir': BASE_DIR}
 
 # Redis 연결은 서버의 이벤트 루프 안에서 만든다 (아래 startup). 비동기 연결은 처음 쓰인 루프에 묶인다
 redis_client = None
@@ -70,7 +64,6 @@ async def connect_train_queue():
     redis_client = connect_redis()
     redis_binary_client = connect_redis(decode_responses=False)
     await create_group_if_missing(redis_client)
-file_handler = FileHandler(DB_CONFIG, ALLOWED_EXTENSIONS, config)
 
 origins = config.get('CORS', 'origins').split(',')
 app.add_middleware(

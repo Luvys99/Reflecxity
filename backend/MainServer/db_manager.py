@@ -56,86 +56,10 @@ class DBManager:
             print(f"Error getting user by uuid: {e}")
             return {}
 
-    def delete_user_by_uuid(self, user_uuid: str):
-        try:
-            with self.connect() as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM users WHERE uuid = %s", (user_uuid,))
-                conn.commit()
-        except Exception as e:
-            print(f"Error deleting user by uuid: {e}")
-
-    def save_file_metadata(self, user_uuid: str, filename: str, file_path: str):
-        try:
-            with self.connect() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "INSERT INTO files (user_uuid, filename, file_path) VALUES (%s, %s, %s)",
-                    (user_uuid, filename, file_path),
-                )
-                conn.commit()
-        except Exception as e:
-            print(f"Error saving file metadata: {e}")
-
-    def get_files_by_user(self, user_uuid: str) -> list:
-        try:
-            with self.connect() as conn:
-                cursor = conn.cursor(dictionary=True)
-                cursor.execute(
-                    "SELECT * FROM files WHERE user_uuid = %s", (user_uuid,)
-                )
-                return cursor.fetchall()
-        except Exception as e:
-            print(f"Error getting files by user: {e}")
-            return []
-
-    def get_file_by_filename(self, user_uuid: str, filename: str) -> dict:
-        try:
-            with self.connect() as conn:
-                cursor = conn.cursor(dictionary=True)
-                cursor.execute(
-                    "SELECT * FROM files WHERE user_uuid = %s AND filename = %s",
-                    (user_uuid, filename),
-                )
-                return cursor.fetchone() or {}
-        except Exception as e:
-            print(f"Error getting file by filename: {e}")
-            return {}
-
-    def delete_file_by_filename(self, user_uuid: str, filename: str):
-        try:
-            with self.connect() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "DELETE FROM files WHERE user_uuid = %s AND filename = %s",
-                    (user_uuid, filename),
-                )
-                conn.commit()
-        except Exception as e:
-            print(f"Error deleting file by filename: {e}")
-
-    def delete_files_by_user(self, user_uuid: str):
-        try:
-            with self.connect() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "DELETE FROM files WHERE user_uuid = %s", (user_uuid,)
-                )
-                conn.commit()
-        except Exception as e:
-            print(f"Error deleting files by user: {e}")
-
     def delete_user_metadata(self, user_uuid: str):
         try:
             with self.connect() as conn:
                 cursor = conn.cursor()
-                
-                # 먼저 사용자가 가지고 있는 파일을 삭제합니다.
-                cursor.execute(
-                    "DELETE FROM files WHERE user_uuid = %s", (user_uuid,)
-                )
-                
-                # 그 후 사용자 메타데이터를 삭제합니다.
                 cursor.execute(
                     "DELETE FROM users WHERE uuid = %s", (user_uuid,)
                 )
