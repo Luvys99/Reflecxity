@@ -1,5 +1,5 @@
 # 학습 파이프라인: 녹음 합치기 → UVR → preprocess → extract → train → index → pitch.txt
-# 결과(성공 / 실패) 기록은 부르는 쪽이 한다 (main.py의 run_training → status.json)
+# 결과(성공 / 실패) 기록은 부르는 쪽이 한다 (학습 워커 → Redis)
 import os
 import sys
 import asyncio
