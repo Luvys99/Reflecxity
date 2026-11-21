@@ -248,6 +248,21 @@ curl -X POST localhost:28300/users/<uuid>/tts -F "tts_text=Hello, this is my voi
 
 Mac(Main, MariaDB) + Windows RTX 3060(Model)에서 10분 녹음 기준 학습 요청부터 Main이 완료를 확인하기까지 4분 20초, TTS는 약 20초 걸렸습니다. TTS는 edge-tts 응답에 따라 가끔 실패하니 다시 요청해 봅니다.
 
+### 5. 다른 사람에게 잠깐 열기 (체험·시연용)
+
+팀원 폰처럼 Tailscale 밖의 기기가 써 보게 할 때만 Main을 HTTPS로 엽니다 ([#77](../../issues/77)). 다른 서버(Redis, DB, Model)는 열리지 않습니다.
+
+```bash
+tailscale funnel --bg 28300          # 열기 → https://<이 Mac 이름>.<tailnet>.ts.net
+tailscale funnel status              # 열려 있는지
+tailscale funnel --https=443 off     # 닫기
+```
+
+- 열려 있는 동안은 주소를 아는 누구나 부를 수 있고, 주소는 인증서 공개 기록으로 금방 알려집니다. **쓸 때만 열고 끝나면 닫습니다**
+- 아직 사용자 확인·요청 수 제한이 없습니다 ([#103](../../issues/103)). 번역만 하루 글자 수 상한이 있습니다 (`TRANSLATE_DAILY_CHAR_LIMIT`, [#105](../../issues/105))
+- 앱: `android/local.properties`의 `mainapi_url`을 위 HTTPS 주소로 바꿔 빌드한 APK를 나눠 줍니다. 개발용 빌드만 에뮬레이터 주소 http를 허용하고, release 빌드는 HTTPS만 씁니다 ([#107](../../issues/107))
+- 처음 한 번은 Tailscale 관리 페이지에서 HTTPS 인증서와 Funnel을 허용해야 합니다 (명령이 허용 링크를 보여 줌)
+
 ## 개선 작업
 
 개선은 이슈 → 브랜치 → PR로 하나씩 진행합니다. 진행 상황은 [Issues](../../issues)에서 볼 수 있습니다.
