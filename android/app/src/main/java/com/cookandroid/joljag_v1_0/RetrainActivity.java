@@ -34,8 +34,8 @@ import okhttp3.ResponseBody;
 public class RetrainActivity extends AppCompatActivity {
 
     private static final String MainAPI_URL = BuildConfig.MainAPI_URL;
-    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online/";
-    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL_USER;
+    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online";
+    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL + "/users/";
 
     private TextView remainingTimeText;
     private Handler handler = new Handler();

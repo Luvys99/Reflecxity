@@ -84,8 +84,8 @@ public class TaskStatusActivity extends AppCompatActivity {
     private boolean server_status_model = false;
 
     private static final String MainAPI_URL = BuildConfig.MainAPI_URL;
-    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online/";
-    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL_USER;
+    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online";
+    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL + "/users/";
     private static final String CHANNEL_ID = "notification_channel";
 
     @Override
@@ -248,7 +248,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                 .build();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER)
+                .url(MainAPI_URL + "/users")
                 .post(RequestBody.create("", null)) // 빈 POST 요청
                 .build();
 
@@ -471,7 +471,7 @@ public class TaskStatusActivity extends AppCompatActivity {
                 .build();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/upload")
+                .url(MainAPI_URL_USER + userUuid + "/recordings")
                 .post(requestBody)
                 .build();
 
@@ -504,20 +504,9 @@ public class TaskStatusActivity extends AppCompatActivity {
 
     private void createModel(String userUuid) {
         OkHttpClient client = new OkHttpClient();
-        JSONObject jsonBody = new JSONObject();
-        try {
-            jsonBody.put("user_uuid", userUuid);
-            jsonBody.put("sample_rate", 40000);
-            jsonBody.put("cpu_cores", 4);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return;
-        }
-
-        RequestBody requestBody = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), jsonBody.toString());
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/models")
-                .post(requestBody)
+                .url(MainAPI_URL_USER + userUuid + "/training")
+                .post(RequestBody.create("", null)) // 빈 POST 요청
                 .build();
 
         client.newCall(request).enqueue(new Callback() {
@@ -548,65 +537,6 @@ public class TaskStatusActivity extends AppCompatActivity {
                 } else {
                     runOnUiThread(() -> showErrorSnackbar(findViewById(R.id.layout)));
                 }
-                response.close();
-            }
-        });
-    }
-
-
-    // 사용자 대기열 정보 조회 메서드
-    private void checkUserQueueStatus(String userUuid) {
-        OkHttpClient client = new OkHttpClient();
-        // 요청 생성
-        Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/queue")
-                .get()
-                .build();
-
-        // 비동기 요청 실행
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                // 실패 처리
-                e.printStackTrace();
-                runOnUiThread(() -> showErrorSnackbar(findViewById(R.id.layout)));
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    try (ResponseBody responseBody = response.body()) {
-                        String responseBodyString = responseBody.string();
-                        JSONObject jsonResponse = new JSONObject(responseBodyString);
-                        String status = jsonResponse.getString("status");
-                        int position = jsonResponse.getInt("position");
-                        // 학습 중이면 서버가 학습을 시작한 뒤 지난 초를 준다 (#89). 없으면 -1
-                        int elapsedSeconds = jsonResponse.optInt("elapsed_seconds", -1);
-
-                        runOnUiThread(() -> {
-                            // 대기열 상태 로그
-                            Log.d("Queue Status", "상태: " + status + ", 위치: " + position);
-
-                            if (position == 1) {
-                                // 대기열 1번 -> 모델 생성 시작
-                                modelCreationStatus.setText(R.string.step_train_now);
-                                showTraining(elapsedSeconds);
-
-                            } else if (position >= 2) {
-                                // 대기열에 있음
-                                modelCreationStatus.setText(getString(R.string.step_train_wait, position - 1));
-                                showWaiting(position - 1);
-                            }
-                        });
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        runOnUiThread(() -> showErrorSnackbar(findViewById(R.id.layout)));
-                    }
-                } else {
-                    runOnUiThread(() -> showErrorSnackbar(findViewById(R.id.layout)));
-                }
-
                 response.close();
             }
         });
@@ -685,11 +615,12 @@ public class TaskStatusActivity extends AppCompatActivity {
         handler.postDelayed(() -> checkModel(userUuid), 10000); // 10초마다 모델 상태를 다시 확인 (학습이 약 5분이라 30초는 늦었다, #93)
     }
 
+    // 학습 상태를 한 번에 묻는다 (#63): status 값으로 대기·학습 중·완료·실패를 나눈다
     private void checkModel(String userUuid) {
         OkHttpClient client = new OkHttpClient();
 
         Request request = new Request.Builder()
-                .url(MainAPI_URL_USER + userUuid + "/modelcheck")
+                .url(MainAPI_URL_USER + userUuid + "/training")
                 .get()
                 .build();
 
@@ -706,9 +637,13 @@ public class TaskStatusActivity extends AppCompatActivity {
                     try (ResponseBody responseBody = response.body()) {
                         String responseBodyString = responseBody.string();
                         JSONObject jsonResponse = new JSONObject(responseBodyString);
-                        String message = jsonResponse.getString("message");
+                        String status = jsonResponse.getString("status");
+                        int position = jsonResponse.optInt("position", 0);
+                        // 학습 중이면 서버가 학습을 시작한 뒤 지난 초를 준다 (#89). 없으면 -1
+                        int elapsedSeconds = jsonResponse.optInt("elapsed_seconds", -1);
+                        Log.d("Training Status", "상태: " + status + ", 위치: " + position);
 
-                        if ("모델 파일 존재".equals(message)) {
+                        if ("success".equals(status)) {
                             runOnUiThread(() -> {
                                 isModelCreated = true;
 
@@ -719,58 +654,66 @@ public class TaskStatusActivity extends AppCompatActivity {
 
                                 saveMainEntryTime(); // 진입 시간 저장
 
-                                runOnUiThread(() -> {
-                                    modelCreationStatus.setText(R.string.step_train);
-                                    progressBar_modelStatus.setVisibility(View.GONE);
-                                    imageView_modelStatus.setVisibility(View.VISIBLE);
-                                });
+                                modelCreationStatus.setText(R.string.step_train);
+                                progressBar_modelStatus.setVisibility(View.GONE);
+                                imageView_modelStatus.setVisibility(View.VISIBLE);
                                 checkIfAllTasksCompleted(userUuid);
                             });
-                        } else {
+                        } else if ("queued".equals(status) || "progress".equals(status)) {
                             runOnUiThread(() -> {
-                                checkUserQueueStatus(userUuid);
-
-                                checkModelPeriodically(userUuid); // 모델 생성 중일 때 다시 확인
+                                if ("progress".equals(status)) {
+                                    modelCreationStatus.setText(R.string.step_train_now);
+                                    showTraining(elapsedSeconds);
+                                } else {
+                                    // 내 앞에 position - 1개
+                                    modelCreationStatus.setText(getString(R.string.step_train_wait, position - 1));
+                                    showWaiting(position - 1);
+                                }
+                                checkModelPeriodically(userUuid); // 끝날 때까지 다시 확인
                             });
+                        } else {
+                            // fail, 또는 학습 요청이 사라짐(none): 처음부터 다시 해야 한다
+                            Log.e("Training Status", "학습 실패: " + jsonResponse.optString("error", status));
+                            runOnUiThread(() -> showTrainingFailed());
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
                         runOnUiThread(() -> showErrorSnackbar(findViewById(R.id.layout)));
                     }
-                } else if (response.code() == 500) {
-                    runOnUiThread(() -> {
-                        showFinished(R.drawable.cloud_alert, R.color.danger);
-                        info_title.setText(R.string.training_fail_title);
-                        info_txt.setText(getString(R.string.learning_error));
-                        modelCreationStatus.setText(R.string.step_train_fail);
-                        progressBar_modelStatus.setVisibility(View.GONE);
-                        homeButton.setVisibility(View.VISIBLE);
-                        nextButton.setVisibility(View.GONE);
-
-                        imageView_modelStatus.setVisibility(View.VISIBLE);
-                        showModelErrorSnackbar(findViewById(R.id.layout));
-
-                        Intent serviceIntent = new Intent(TaskStatusActivity.this, TaskCheckService.class);
-                        stopService(serviceIntent);
-
-                        if(isPushCreated) {
-
-                        } else {
-                            createNotificationChannel();
-                            sendErrorPushNotification();
-
-                            SharedPreferences sharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
-                            SharedPreferences.Editor editor = sharedPreferences.edit();
-                            editor.putBoolean("isPushCreated", true);
-                            editor.apply();
-                        }
-                    });
                 } else {
                     runOnUiThread(() -> showErrorSnackbar(findViewById(R.id.layout)));
                 }
                 response.close();
             }
         });
+    }
+
+    private void showTrainingFailed() {
+        showFinished(R.drawable.cloud_alert, R.color.danger);
+        info_title.setText(R.string.training_fail_title);
+        info_txt.setText(getString(R.string.learning_error));
+        modelCreationStatus.setText(R.string.step_train_fail);
+        progressBar_modelStatus.setVisibility(View.GONE);
+        homeButton.setVisibility(View.VISIBLE);
+        nextButton.setVisibility(View.GONE);
+
+        imageView_modelStatus.setVisibility(View.VISIBLE);
+        showModelErrorSnackbar(findViewById(R.id.layout));
+
+        Intent serviceIntent = new Intent(TaskStatusActivity.this, TaskCheckService.class);
+        stopService(serviceIntent);
+
+        if(isPushCreated) {
+
+        } else {
+            createNotificationChannel();
+            sendErrorPushNotification();
+
+            SharedPreferences sharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putBoolean("isPushCreated", true);
+            editor.apply();
+        }
     }
 
     private void sendSuccessPushNotification() {

@@ -44,7 +44,7 @@ def start_fake_tts_worker(test_redis, final_status, audio=FAKE_AUDIO, leave_resu
 
 
 def request_tts(api, user_uuid, text="Hello", **form):
-    return api.post(f"/user/{user_uuid}/tts", data={"tts_text": text, **form})
+    return api.post(f"/users/{user_uuid}/tts", data={"tts_text": text, **form})
 
 
 def test_워커가_성공하면_결과_음성을_돌려주고_Redis에서_지운다(api, test_redis, trained_user):
