@@ -91,3 +91,28 @@ def test_미리_준비하면_변환에_쓸_HuBERT를_불러오고_불러온_것�
     embedder_model = tts.RVC_TTS_DEFAULT_OPTIONS["embedder_model"]
     assert voice_converter.loaded_embedders == [(embedder_model, tts.RVC_TTS_DEFAULT_OPTIONS["embedder_model_custom"])]
     assert voice_converter.last_embedder_model == embedder_model
+
+
+def make_model_files(tmp_path, monkeypatch, file_names):
+    # logs/user1/ 아래에 빈 모델·인덱스 파일을 만든다
+    monkeypatch.chdir(tmp_path)
+    model_dir = tmp_path / "logs" / "user1"
+    model_dir.mkdir(parents=True)
+    for file_name in file_names:
+        (model_dir / file_name).write_text("")
+
+
+def test_다시_학습해_모델_파일이_여러_개면_가장_많이_학습한_파일을_쓴다(tmp_path, monkeypatch):
+    make_model_files(tmp_path, monkeypatch, ["user1_2e_18s.pth", "user1_10e_90s.pth", "D_2333333.pth", "added_user1_v2.index"])
+
+    pth_path, index_path = tts.find_model_files("user1")
+
+    assert os.path.basename(pth_path) == "user1_10e_90s.pth"
+    assert os.path.basename(index_path) == "added_user1_v2.index"
+
+
+def test_모델_파일이_없으면_FileNotFoundError(tmp_path, monkeypatch):
+    make_model_files(tmp_path, monkeypatch, ["added_user1_v2.index"])
+
+    with pytest.raises(FileNotFoundError):
+        tts.find_model_files("user1")

@@ -1,6 +1,7 @@
 # TTS: 내 모델 파일 찾기, 문장 → 내 목소리 음성 (edge-tts 기계 음성 → RVC로 내 목소리 변환)
 # 결과(성공 / 실패) 기록은 부르는 쪽이 한다 (TTS 워커 → Redis)
 import os
+import re
 import time
 import uuid
 
@@ -29,7 +30,14 @@ RVC_TTS_DEFAULT_OPTIONS = {
 }
 
 
+# 모델 파일 이름({uuid}_10e_90s.pth)에서 학습한 epoch 수를 읽는다. 없으면 0
+def read_trained_epochs(pth_file_name):
+    match = re.search(r"_(\d+)e_", pth_file_name)
+    return int(match.group(1)) if match else 0
+
+
 # 학습 결과 폴더 logs/{uuid}에서 모델 파일(.pth)과 인덱스(added_*.index) 경로를 찾는다. 없으면 FileNotFoundError
+# 다시 학습하면 이전 모델 파일(예: 2 epoch)이 남아 있으므로 가장 많이 학습한 파일을 쓴다 (#65)
 def find_model_files(user_uuid):
     model_dir = os.path.join(
         ".", "logs", user_uuid
@@ -53,9 +61,7 @@ def find_model_files(user_uuid):
             f"No 'added_*.index' file found in {model_dir}"
         )
 
-    pth_path = os.path.join(
-        model_dir, pth_files[0]
-    )  # os.path.join 사용
+    pth_path = os.path.join(model_dir, max(pth_files, key=read_trained_epochs))
     index_path = os.path.join(
         model_dir, index_files[0]
     )  # os.path.join 사용
