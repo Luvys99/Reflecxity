@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 녹음 화면 (#82): 모은 녹음 진행 → (녹음 중이면 읽을 글) → 녹음 목록 → 버튼 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@color/sand"
     android:orientation="vertical">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/custom_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/background"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/sand"
+        android:theme="@style/ThemeOverlay.AppCompat.Light">
 
         <TextView
             android:id="@+id/toolbar_title"
@@ -20,58 +21,209 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:fontFamily="@font/pretendard_semibold"
-            android:text="음성 학습을 위해 녹음을 시작하세요"
-            android:textColor="@color/grey900"
-            android:textSize="18sp" />
-
+            android:text="@string/record_title"
+            android:textColor="@color/ink"
+            android:textSize="17sp" />
     </androidx.appcompat.widget.Toolbar>
-
-    <!-- RecyclerView 추가 -->
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recordings_recycler_view"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp"
-        android:layout_marginTop="16dp"
-        android:layout_weight="1" >
-
-    </androidx.recyclerview.widget.RecyclerView>
-
-    <TextView
-        android:id="@+id/txt_recordingTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:layout_gravity="center"
-        android:text="00:00"
-        android:textColor="@color/grey900" />
 
     <LinearLayout
         android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <!-- 모은 녹음: 학습까지 얼마나 남았는지 -->
+        <LinearLayout
+            android:id="@+id/progress_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="bottom"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/TextAppearance.Reflecxity.Body.Secondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:layout_weight="1"
+                    android:text="@string/record_collected"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/txt_total_recorded"
+                    style="@style/TextAppearance.Reflecxity.Number"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0:00"
+                    android:textSize="28sp" />
+
+                <TextView
+                    style="@style/TextAppearance.Reflecxity.Body.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginBottom="4dp"
+                    android:text="@string/record_goal" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/progress_total"
+                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_marginTop="14dp"
+                android:max="300"
+                android:progress="0"
+                android:progressDrawable="@drawable/progress_total" />
+
+            <TextView
+                android:id="@+id/txt_progress_message"
+                style="@style/TextAppearance.Reflecxity.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tips_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip"
+                android:gravity="center"
+                android:padding="10dp"
+                android:text="@string/record_tip1"
+                android:textColor="@color/ink2"
+                android:textSize="12.5sp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip"
+                android:gravity="center"
+                android:padding="10dp"
+                android:text="@string/record_tip2"
+                android:textColor="@color/ink2"
+                android:textSize="12.5sp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_chip"
+                android:gravity="center"
+                android:padding="10dp"
+                android:text="@string/record_tip3"
+                android:textColor="@color/ink2"
+                android:textSize="12.5sp" />
+        </LinearLayout>
+
+        <!-- 녹음 중에만: 녹음 시간 + 읽을 글 -->
+        <LinearLayout
+            android:id="@+id/recording_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/txt_recordingTime"
+                style="@style/TextAppearance.Reflecxity.Number"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="00:00"
+                android:textSize="44sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/pretendard_semibold"
+                android:text="@string/record_read_label"
+                android:textColor="@color/sunset_text"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/txt_read_text"
+                style="@style/TextAppearance.Reflecxity.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:lineSpacingMultiplier="1.5"
+                android:textSize="18sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_next_text"
+                style="@style/Widget.Reflecxity.Button.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/record_next_text" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txt_list_header"
+            style="@style/TextAppearance.Reflecxity.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="4dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recordings_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <!-- 고른 녹음 듣기: 재생 중에만 -->
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
         android:orientation="horizontal">
 
         <TextView
             android:id="@+id/txt_currentTime"
-            android:layout_width="wrap_content"
+            style="@style/TextAppearance.Reflecxity.Caption"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="15dp"
             android:layout_weight="1"
-            android:text="00:00"
-            android:textColor="@color/grey900"/>
+            android:text="00:00" />
 
         <TextView
             android:id="@+id/txt_totalTime"
-            android:layout_width="wrap_content"
+            style="@style/TextAppearance.Reflecxity.Caption"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginRight="15dp"
             android:layout_weight="1"
-            android:text="99:99"
-            android:textColor="@color/grey900"
+            android:text="00:00"
             android:textAlignment="viewEnd" />
     </LinearLayout>
 
@@ -79,134 +231,130 @@
         android:id="@+id/seekBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="3dp"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp"
-        android:layout_marginBottom="10dp"
-        android:progressDrawable="@drawable/custom_seekbar_progress"
-        android:splitTrack="false"
-        android:thumb="@drawable/custom_seekbar_thumb" />
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="8dp"
+        android:progressTint="@color/sky"
+        android:thumbTint="@color/sky" />
 
-    <!-- 기본적으로 숨김 상태 -->
+    <!-- 버튼: 아무것도 안 골랐으면 녹음하기 하나, 고르면 지우기·듣기·학습 시작 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="24dp">
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:layout_marginRight="10dp"
-            android:orientation="horizontal">
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/button_delete_selected"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_button_secondary"
+                android:contentDescription="@string/record_delete"
+                android:scaleType="centerInside"
+                app:srcCompat="@drawable/delete"
+                app:tint="@color/ink" />
 
             <TextView
                 android:id="@+id/txt_delete"
+                style="@style/TextAppearance.Reflecxity.Caption"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="10dp"
-                android:layout_weight="1"
-                android:text="삭제"
-                android:textSize="20sp"
-                android:textColor="@color/grey900"
-                android:textAlignment="center" />
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:text="@string/record_delete" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/button_playing"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_button_secondary"
+                android:contentDescription="@string/record_play"
+                android:scaleType="centerInside"
+                app:srcCompat="@drawable/play_arrow"
+                app:tint="@color/ink" />
 
             <TextView
                 android:id="@+id/txt_play"
+                style="@style/TextAppearance.Reflecxity.Caption"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="10dp"
-                android:layout_weight="1"
-                android:text="재생 시작"
-                android:textSize="20sp"
-                android:textColor="@color/grey900"
-                android:textAlignment="center" />
+                android:layout_marginTop="6dp"
+                android:gravity="center"
+                android:text="@string/record_play" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="3"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/button_recording"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:background="@drawable/bg_button_primary"
+                android:contentDescription="@string/record_start"
+                android:scaleType="centerInside"
+                app:srcCompat="@drawable/record"
+                app:tint="@color/on_sky" />
 
             <TextView
                 android:id="@+id/txt_record"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="10dp"
-                android:layout_weight="1"
-                android:text="녹음 시작"
-                android:textSize="20sp"
-                android:textColor="@color/grey900"
-                android:textAlignment="center" />
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/pretendard_semibold"
+                android:gravity="center"
+                android:text="@string/record_start"
+                android:textColor="@color/ink"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="2"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/button_submit_selected"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_button_primary"
+                android:contentDescription="@string/record_submit"
+                android:scaleType="centerInside"
+                app:srcCompat="@drawable/send_to_mobile"
+                app:tint="@color/on_sky" />
 
             <TextView
                 android:id="@+id/txt_send"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="10dp"
-                android:layout_weight="1"
-                android:text="파일 제출"
-                android:textSize="20sp"
-                android:textColor="@color/grey900"
-                android:textAlignment="center" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:layout_marginRight="10dp"
-            android:orientation="horizontal">
-
-            <ImageButton
-                android:id="@+id/button_delete_selected"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_weight="1"
-                android:layout_marginLeft="10dp"
-                android:layout_marginRight="10dp"
-                android:layout_marginBottom="20dp"
-                android:background="@drawable/rounded_btn_background"
-                android:backgroundTint="@color/btn_green"
-                android:scaleType="centerInside"
-                app:srcCompat="@drawable/delete" />
-
-            <ImageButton
-                android:id="@+id/button_playing"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_weight="1"
-                android:layout_marginLeft="10dp"
-                android:layout_marginRight="10dp"
-                android:layout_marginBottom="20dp"
-                android:background="@drawable/rounded_btn_background"
-                android:backgroundTint="@color/btn_green"
-                android:scaleType="centerInside"
-                app:srcCompat="@drawable/play_arrow"/>
-
-            <ImageButton
-                android:id="@+id/button_recording"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_weight="1"
-                android:layout_marginLeft="10dp"
-                android:layout_marginRight="10dp"
-                android:layout_marginBottom="20dp"
-                android:background="@drawable/rounded_btn_background"
-                android:scaleType="centerInside"
-                app:srcCompat="@drawable/record" />
-
-            <ImageButton
-                android:id="@+id/button_submit_selected"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:layout_weight="1"
-                android:layout_marginLeft="10dp"
-                android:layout_marginRight="10dp"
-                android:layout_marginBottom="20dp"
-                android:background="@drawable/rounded_btn_background"
-                android:backgroundTint="@color/btn_green"
-                android:scaleType="centerInside"
-                app:srcCompat="@drawable/send_to_mobile" />
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/pretendard_semibold"
+                android:gravity="center"
+                android:text="@string/record_submit"
+                android:textColor="@color/ink"
+                android:textSize="14sp" />
         </LinearLayout>
     </LinearLayout>
-
 </LinearLayout>

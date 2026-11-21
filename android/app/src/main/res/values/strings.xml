@@ -4,7 +4,7 @@
     <string name="feature_3_desc">사용자 맞춤형 학습 기능 설명 이미지</string>
     <string name="input_hint">번역하고 싶은 말을 입력해주세요.\n음성인식 버튼을 통해 말하여 입력할 수 있습니다.</string>
     <string name="result_hint">번역된 결과가 표시됩니다.</string>
-    <string name="learning_guideline">"1. 소음이 적은 방일수록 학습 성능이 향상됩니다.\n2. 학습에 필요한 음성 길이는 10분 녹음을 권장하며 최소 5분을 전송하셔야합니다.\n3. 책이나 문서 등의 텍스트를 지속적으로 천천히 읽어주세요.\n\n추후 반영된 목소리 높낮이 조절은 환경설정 메뉴에서 직접 조절이 가능합니다.\n\n최대 5개까지 동시 선택하여 전송이 가능합니다.</string>
+    <string name="learning_guideline">1. 조용한 곳에서 녹음할수록 내 목소리와 더 닮아요.\n2. 모두 합쳐 5분 이상 녹음해 주세요. 여러 번 나눠 녹음해도 돼요.\n3. 책이나 기사를 천천히 또박또박 읽어 주세요. 녹음하는 동안 읽을 글도 보여 드려요.\n\n목소리 높이는 학습할 때 자동으로 맞춰요.</string>
     <string name="pitch_guideline">본 설정은 말하기 목소리의 높낮이를 조절하고 싶은 경우에 사용합니다.\n\n남성의 경우, 평균적으로 0~6 설정 권장\n여성의 경우, 평균적으로 12~24 설정 권장\n\n설정 가능한 범위: -24 ~ 24</string>
     <string name="datatransfer_guideline">본 기능은 사용자 학습 데이터를 다른 기기로 옮겨서 그대로 사용하기 위한 기능입니다. \n\n옮긴 이후 데이터 재학습을 진행하실 경우 사용에 문제가 발생할 수 있으니 같은 사용자로 다른 기기에서 동시에 사용하는 행위는 꼭 필요한 경우가 아니라면 사용하지 않는 것을 권장드립니다.</string>
     <string name="learning_error">다음과 같은 사유로 오류가 발생했을 수 있습니다.\n\n1. 목소리 크기가 작아 제대로 인식이 안됨\n2. 녹음된 목소리의 양이 작아 학습량이 부족함\n3. 외부 소음이 심함\n4. 녹음 파일 손상됨\n\n학습을 처음부터 다시 시도해주세요.</string>
@@ -56,4 +56,37 @@
     <string name="terms_agree">동의하고 녹음하러 가기</string>
     <string name="terms_disagree">동의하지 않아요</string>
     <string name="close">닫기</string>
+
+    <!-- 녹음 (#82) -->
+    <string name="record_title">목소리 녹음</string>
+    <string name="record_guide_title">녹음 안내</string>
+    <string name="record_collected">모은 녹음</string>
+    <string name="record_goal">/ 5:00</string>
+    <string name="record_need_more">%1$s 더 녹음하면 학습할 수 있어요</string>
+    <string name="record_enough">학습할 수 있어요. 녹음을 골라 제출해 주세요</string>
+    <string name="record_tip1">조용한 곳에서</string>
+    <string name="record_tip2">천천히 또박또박</string>
+    <string name="record_tip3">책이나 기사 읽기</string>
+    <string name="record_list_count">녹음 %1$d개</string>
+    <string name="record_read_label">이 글을 소리 내어 읽어 보세요</string>
+    <string name="record_next_text">다른 글 보기</string>
+    <string name="record_start">녹음하기</string>
+    <string name="record_stop">녹음 끝내기</string>
+    <string name="record_play">듣기</string>
+    <string name="record_play_stop">멈춤</string>
+    <string name="record_delete">지우기</string>
+    <string name="record_submit">학습 시작</string>
+    <string name="record_submit_title">녹음 %1$d개로 학습할까요?</string>
+    <string name="record_submit_message">녹음 길이 %1$s\n예상 학습 시간 약 %2$d분\n\n학습을 시작하면 녹음을 서버로 올려요. 앱을 꺼도 괜찮고, 끝나면 알림으로 알려 드려요.</string>
+    <string name="record_too_short">녹음이 %1$s 더 필요해요. 모두 합쳐 5분 이상이어야 학습할 수 있어요.</string>
+    <string name="cancel">취소</string>
+    <string name="ok">확인</string>
+    <string name="dont_show_again">다시 보지 않기</string>
+    <string-array name="record_read_texts">
+        <item>아침 일찍 시장에 나가면 갓 구운 빵 냄새가 골목을 가득 채운다. 사람들은 저마다 바구니를 들고 오늘 먹을 채소와 과일을 고른다. 나는 천천히 걸으며 가게 주인들과 인사를 나눈다.</item>
+        <item>공항에 도착하니 낯선 언어의 안내 방송이 들려왔다. 표지판을 따라 짐을 찾고, 지하철을 타는 곳까지 걸어가며 처음 보는 도시의 공기를 천천히 들이마셨다.</item>
+        <item>비가 그친 오후, 창밖으로 젖은 나뭇잎이 반짝였다. 따뜻한 차를 한 잔 내려 놓고, 오랫동안 미뤄 두었던 책의 첫 장을 펼쳤다. 조용한 방 안에 책장 넘기는 소리만 들렸다.</item>
+        <item>우리 동네에는 작은 도서관이 하나 있다. 주말이면 아이들이 그림책을 읽고, 어른들은 신문을 넘기며 하루를 시작한다. 사서 선생님은 언제나 웃으며 새로 들어온 책을 소개해 준다.</item>
+        <item>여행을 떠나기 전날 밤에는 늘 설렌다. 가방에 옷과 충전기를 챙기고, 가고 싶은 곳을 지도에 표시해 둔다. 처음 가는 곳에서 길을 묻고, 새로운 사람들과 이야기하는 상상을 한다.</item>
+    </string-array>
 </resources>

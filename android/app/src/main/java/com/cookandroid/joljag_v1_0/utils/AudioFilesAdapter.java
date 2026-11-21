@@ -63,11 +63,8 @@ public class AudioFilesAdapter extends RecyclerView.Adapter<AudioFilesAdapter.Au
         }
 
         // 선택 상태에 따른 배경색 설정
-        if (selectedItems.get(position, false)) {
-            holder.itemView.setBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.grey300));
-        } else {
-            holder.itemView.setBackgroundColor(ContextCompat.getColor(holder.itemView.getContext(), android.R.color.transparent));
-        }
+        holder.itemView.setSelected(selectedItems.get(position, false)); // 고르면 파란 테두리 (bg_list_item, #82)
+        holder.fileNameTextView.setText(audioFile.getName().replace(".m4a", ""));
 
         // 항목 클릭 시 선택 상태 토글
         holder.itemView.setOnClickListener(v -> {

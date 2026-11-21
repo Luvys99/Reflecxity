@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 녹음 중일 때 녹음 버튼 (누르면 끝) (#82) -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#8F2E0A">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/danger" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+</ripple>
