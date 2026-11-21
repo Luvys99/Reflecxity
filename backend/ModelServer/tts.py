@@ -6,10 +6,11 @@ import time
 import uuid
 
 TTS_VOICE = "en-US-AndrewMultilingualNeural"
-# 이 기계 음성의 목소리 높이(F0, Hz). 자동 피치의 기준값 (#59, auto_pitch.py)
-# 피치 0으로 변환한 결과가 녹음 높이와 거의 같은 것을 확인한 값 (녹음 119·122Hz → 결과 118·121Hz).
-# 다른 음성으로 바꾸면 실제 변환 결과로 다시 맞춘다 (ko-KR-InJoonNeural은 잰 값 142Hz인데 변환 결과가 156Hz로 어긋났다)
-TTS_VOICE_F0_HZ = 116
+# 이 기계 음성의 평균 목소리 높이(F0, Hz). 자동 피치의 기준값 (#59, auto_pitch.py)
+# 영어 문장 12개의 중앙값. 문장마다 102~146Hz로 다르다(질문은 끝을 올려 높다). 억양은 그대로 두고 평균 높이만 맞춘다
+# 이 음성은 피치 0으로 변환한 결과가 기계 음성 높이와 거의 같았다. 다른 음성으로 바꾸면 실제 변환 결과로 다시 맞춘다
+# (ko-KR-InJoonNeural은 잰 값 142Hz인데 피치 0 변환 결과가 156Hz로 어긋났다)
+TTS_VOICE_F0_HZ = 120
 
 # rvc_cli.py tts 명령의 기본값 (rvc_cli.py의 tts_parser). 새 프로세스로 실행하던 때와 같은 음성이 나오게 그대로 쓴다 (#49)
 RVC_TTS_DEFAULT_OPTIONS = {

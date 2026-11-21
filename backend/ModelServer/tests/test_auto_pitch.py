@@ -17,8 +17,9 @@ def write_tone(path, f0_hz, seconds=3.0, sample_rate=16000):
 @pytest.mark.parametrize("voice_f0_hz, expected_pitch", [
     (TTS_VOICE_F0_HZ, 0),       # 기계 음성과 같은 높이
     (TTS_VOICE_F0_HZ * 2, 12),  # 한 옥타브 위
-    (122, 1),                   # 측정한 남자 녹음 (#59 댓글)
-    (232, 12),                  # 높은 여자 목소리
+    (119, 0),                   # 측정한 남자 녹음 (#59 댓글)
+    (202, 9),                   # VCTK 여자 화자 가운데값
+    (232, 11),                  # 높은 여자 목소리
     (500, 12),                  # 한 옥타브보다 크면 12로 제한
     (40, -12),
 ])
