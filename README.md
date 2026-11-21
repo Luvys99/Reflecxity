@@ -225,7 +225,7 @@ python3 -m venv .venv
 # 1) 사용자 생성 → {"uuid": ...}
 curl -X POST localhost:28300/user
 
-# 2) 녹음 업로드 (m4a / ogg)
+# 2) 녹음 업로드 (m4a / ogg / wav, 그 밖은 400)
 curl -F "file=@voice.m4a" localhost:28300/user/<uuid>/upload
 
 # 3) 학습 요청 (대기열에 들어감) → 완료 확인

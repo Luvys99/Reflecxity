@@ -19,7 +19,7 @@
 *   **URL:** `/user/{user_uuid}/upload`
 *   **데이터:** 
     *   `user_uuid`: 사용자 고유 UUID
-    *   `file`: 업로드할 오디오 파일 (.ogg 형식만 지원)
+    *   `file`: 업로드할 녹음 파일 (.m4a, .ogg, .wav만, 그 밖은 400)
 *   **응답:** 
     *   성공: `{ "message": "파일 업로드 성공", "file_path": "파일 경로" }`
     *   실패:
