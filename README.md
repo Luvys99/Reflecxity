@@ -230,17 +230,17 @@ python3 -m venv .venv
 
 ```bash
 # 1) 사용자 생성 → {"uuid": ...}
-curl -X POST localhost:28300/user
+curl -X POST localhost:28300/users
 
 # 2) 녹음 업로드 (m4a / ogg / wav, 그 밖은 400)
-curl -F "file=@voice.m4a" localhost:28300/user/<uuid>/upload
+curl -F "file=@voice.m4a" localhost:28300/users/<uuid>/recordings
 
-# 3) 학습 요청 (대기열에 들어감) → 완료 확인
-curl -X POST localhost:28300/user/<uuid>/models
-curl localhost:28300/user/<uuid>/modelcheck
+# 3) 학습 요청 (대기열에 들어감) → 상태 확인: {"status": "queued" | "progress" | "success" | "fail", ...}
+curl -X POST localhost:28300/users/<uuid>/training
+curl localhost:28300/users/<uuid>/training
 
 # 4) TTS (결과 음성 파일을 바로 받음)
-curl -X POST localhost:28300/user/<uuid>/tts -F "tts_text=Hello, this is my voice." -o result.wav
+curl -X POST localhost:28300/users/<uuid>/tts -F "tts_text=Hello, this is my voice." -o result.wav
 ```
 
 Mac(Main, MariaDB) + Windows RTX 3060(Model)에서 10분 녹음 기준 학습 요청부터 Main이 완료를 확인하기까지 4분 20초, TTS는 약 20초 걸렸습니다. TTS는 edge-tts 응답에 따라 가끔 실패하니 다시 요청해 봅니다.
