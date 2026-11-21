@@ -18,6 +18,8 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "String", "MAIN_API_URL", properties['mainapi_url']
+        // Main이 앱 요청인지 확인하는 문구 (#103). 없으면 빈 값 → 헤더를 보내지 않는다 (개발용 Main은 검사 안 함)
+        buildConfigField "String", "APP_KEY", properties.getProperty('app_key', '""')
     }
 
     buildTypes {

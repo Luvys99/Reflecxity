@@ -241,7 +241,7 @@ public class TaskStatusActivity extends AppCompatActivity {
     }
 
     private void createUser(TaskStatusActivity.OnUserCreatedListener listener) {
-        OkHttpClient client = new OkHttpClient.Builder()
+        OkHttpClient client = MainApi.newClientBuilder()
                 .connectTimeout(10, TimeUnit.SECONDS)
                 .writeTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
@@ -298,7 +298,7 @@ public class TaskStatusActivity extends AppCompatActivity {
 
     // OkHttp를 사용해 서버에 사용자 삭제 요청을 보내는 메서드
     private void deleteUserFromServer(String userUUID) {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = MainApi.newClient();
 
         // 요청 생성 (DELETE 요청)
         Request request = new Request.Builder()
@@ -346,7 +346,7 @@ public class TaskStatusActivity extends AppCompatActivity {
     }
 
     private void checkServerStatus(Runnable onSuccess) {
-        OkHttpClient client = new OkHttpClient.Builder()
+        OkHttpClient client = MainApi.newClientBuilder()
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .writeTimeout(5, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)
@@ -434,7 +434,7 @@ public class TaskStatusActivity extends AppCompatActivity {
     }
 
     private void uploadSelectedFiles(String userUuid, ArrayList<File> selectedFiles, TaskStatusActivity.OnFilesUploadedListener listener) {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = MainApi.newClient();
 
         uploadFileRecursively(userUuid, selectedFiles, 0, client, listener);
     }
@@ -503,7 +503,7 @@ public class TaskStatusActivity extends AppCompatActivity {
 
 
     private void requestTraining(String userUuid) {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = MainApi.newClient();
         Request request = new Request.Builder()
                 .url(USERS_URL + userUuid + "/training")
                 .post(RequestBody.create("", null)) // 빈 POST 요청
@@ -617,7 +617,7 @@ public class TaskStatusActivity extends AppCompatActivity {
 
     // 학습 상태를 한 번에 묻는다 (#63): status 값으로 대기·학습 중·완료·실패를 나눈다
     private void checkTraining(String userUuid) {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = MainApi.newClient();
 
         Request request = new Request.Builder()
                 .url(USERS_URL + userUuid + "/training")

@@ -708,7 +708,7 @@ public class DataLearningActivity extends AppCompatActivity {
     }
 
     private void checkServerStatus(Runnable onSuccess) {
-        OkHttpClient client = new OkHttpClient.Builder()
+        OkHttpClient client = MainApi.newClientBuilder()
                 .connectTimeout(5, TimeUnit.SECONDS)
                 .writeTimeout(5, TimeUnit.SECONDS)
                 .readTimeout(5, TimeUnit.SECONDS)

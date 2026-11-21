@@ -375,7 +375,7 @@ private void translateText(String originalText) {
         return;
     }
 
-    OkHttpClient client = new OkHttpClient();
+    OkHttpClient client = MainApi.newClient();
 
     JSONObject body = new JSONObject();
     try {
@@ -516,7 +516,7 @@ private void translateText(String originalText) {
     }
 
     private void requestTTS(String userUuid, String ttsText, int ttsPitch) {
-        OkHttpClient client = new OkHttpClient.Builder()
+        OkHttpClient client = MainApi.newClientBuilder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
