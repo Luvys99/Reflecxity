@@ -6,6 +6,7 @@ import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
 from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 import requests
 from dotenv import load_dotenv
@@ -17,6 +18,7 @@ from train_queue import (
     count_jobs_ahead, measure_working_ms, count_train_jobs_by_status,
 )
 from tts_queue import enqueue_tts_job, wait_for_tts_result
+from translation_limit import reserve_translation_chars, release_translation_chars
 
 # 로그 설정: 시간과 함께 출력
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -86,6 +88,8 @@ TTS_WAIT_SECONDS = int(os.environ.get("TTS_WAIT_SECONDS", 90))
 # Google 번역 키. 앱(APK)에 넣으면 누구나 꺼내 쓸 수 있어서 서버에만 둔다 (#102). 없으면 번역 요청에 503
 GOOGLE_TRANSLATE_API_KEY = os.environ.get("GOOGLE_TRANSLATE_API_KEY")
 GOOGLE_TRANSLATE_URL = "https://translation.googleapis.com/language/translate/v2"
+# 번역 하루 글자 수 상한. 넘으면 429 (#105). 문장 하나가 20~50자라 기본 2만 자면 하루 수백 문장
+TRANSLATE_DAILY_CHAR_LIMIT = int(os.environ.get("TRANSLATE_DAILY_CHAR_LIMIT", 20000))
 
 # 요청별 로깅 미들웨어
 @app.middleware("http")
@@ -301,17 +305,24 @@ class TranslationRequest(BaseModel):
     "/translations",
     tags=["번역"],
     summary="번역 (Google 번역을 대신 호출)",
-    description="앱 대신 Google 번역 v2를 부른다. 키는 서버 `.env`의 `GOOGLE_TRANSLATE_API_KEY`에만 있다 (#102). 빈 문장 400, 키 없음 503, Google 실패 502.",
+    description="앱 대신 Google 번역 v2를 부른다. 키는 서버 `.env`의 `GOOGLE_TRANSLATE_API_KEY`에만 있다 (#102). 하루 글자 수 상한(`TRANSLATE_DAILY_CHAR_LIMIT`, 기본 2만 자)을 넘으면 Google을 부르지 않고 429 (#105). 빈 문장 400, 키 없음 503, Google 실패 502.",
 )
-def translate(request: TranslationRequest):
+async def translate(request: TranslationRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="문장이 비어 있습니다.")
     if not GOOGLE_TRANSLATE_API_KEY:
         raise HTTPException(status_code=503, detail="번역 키가 설정되지 않았습니다.")
 
+    chars = len(request.text)
+    if not await reserve_translation_chars(redis_client, chars, TRANSLATE_DAILY_CHAR_LIMIT):
+        logging.warning(f"번역 하루 상한 초과: {chars}자 요청 거절")
+        raise HTTPException(status_code=429, detail="오늘 번역할 수 있는 양을 다 썼습니다.")
+
     try:
         # 키는 주소(?key=)가 아니라 헤더로 보낸다: 에러 메시지·로그에 주소가 찍혀도 키가 남지 않는다
-        response = requests.post(
+        # requests는 기다리는 동안 서버 전체를 멈추므로 다른 스레드에서 부른다
+        response = await run_in_threadpool(
+            requests.post,
             GOOGLE_TRANSLATE_URL,
             headers={"X-Goog-Api-Key": GOOGLE_TRANSLATE_API_KEY},
             json={"q": request.text, "target": request.target, "format": "text"},
@@ -321,6 +332,7 @@ def translate(request: TranslationRequest):
         translated_text = response.json()["data"]["translations"][0]["translatedText"]
     except (requests.exceptions.RequestException, KeyError, IndexError, ValueError) as e:
         logging.error(f"번역 실패: {type(e).__name__}")
+        await release_translation_chars(redis_client, chars)  # 번역 못 했으니 센 글자를 되돌린다
         raise HTTPException(status_code=502, detail="번역 서버 응답 오류")
 
     return {"translated_text": translated_text}
