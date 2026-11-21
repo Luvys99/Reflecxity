@@ -8,7 +8,6 @@ import android.media.MediaPlayer;
 import android.os.*;
 import android.speech.RecognitionListener;
 import android.text.Editable;
-import android.text.Html;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.*;
@@ -30,20 +29,18 @@ import com.cookandroid.joljag_v1_0.utils.*;
 import com.google.android.material.snackbar.Snackbar;
 
 import okhttp3.FormBody;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,8 +80,8 @@ public class MainActivity extends AppCompatActivity {
 
     private MediaPlayer mediaPlayer;
 
-    private static final String GOOGLE_API_KEY = BuildConfig.GOOGLE_API_KEY;
-    private static final String USERS_URL = BuildConfig.MAIN_API_URL + "/users/";
+    private static final String MAIN_API_URL = BuildConfig.MAIN_API_URL;
+    private static final String USERS_URL = MAIN_API_URL + "/users/";
     private static final int REQUEST_AUDIO_PERMISSION_CODE = 200;
 
     @Override
@@ -369,35 +366,45 @@ private void stopListening() {
 }
 
 
+// 번역은 Main이 대신 Google을 부른다. 번역 키는 서버에만 있다 (#102)
 private void translateText(String originalText) {
-    OkHttpClient client = new OkHttpClient.Builder().build();
+    OkHttpClient client = new OkHttpClient();
 
-    Retrofit retrofit = new Retrofit.Builder()
-        .baseUrl("https://translation.googleapis.com")
-        .client(client)
-        .addConverterFactory(GsonConverterFactory.create())
-        .build();
+    JSONObject body = new JSONObject();
+    try {
+        body.put("text", originalText);
+        body.put("target", targetLanguage);
+    } catch (JSONException e) {
+        Log.e("TranslateError", "요청 만들기 실패", e);
+        return;
+    }
 
-    TranslationService service = retrofit.create(TranslationService.class);
-    TranslationRequest request = new TranslationRequest(Collections.singletonList(originalText), targetLanguage);
+    Request request = new Request.Builder()
+            .url(MAIN_API_URL + "/translations")
+            .post(RequestBody.create(body.toString(), MediaType.parse("application/json; charset=utf-8")))
+            .build();
 
-    Call<TranslationResponse> call = service.translateText(GOOGLE_API_KEY, request);
-    call.enqueue(new Callback<TranslationResponse>() {
+    client.newCall(request).enqueue(new okhttp3.Callback() {
         @Override
-        public void onResponse(Call<TranslationResponse> call, Response<TranslationResponse> response) {
-            if (response.isSuccessful() && response.body() != null) {
-                String translated = response.body().getData().getTranslations().get(0).getTranslatedText();
-                translated = Html.fromHtml(translated).toString();
-                translatedText.setText(translated);
-                cacheTextTranslated = translated;
-            } else {
-                Log.e("TranslateError", "Translation failed: " + response.message());
-            }
+        public void onFailure(okhttp3.Call call, IOException e) {
+            Log.e("TranslateError", "API call failed", e);
         }
 
         @Override
-        public void onFailure(Call<TranslationResponse> call, Throwable t) {
-            Log.e("TranslateError", "API call failed", t);
+        public void onResponse(okhttp3.Call call, okhttp3.Response response) throws IOException {
+            try (okhttp3.ResponseBody responseBody = response.body()) {
+                if (!response.isSuccessful() || responseBody == null) {
+                    Log.e("TranslateError", "Translation failed: " + response.code());
+                    return;
+                }
+                String translated = new JSONObject(responseBody.string()).getString("translated_text");
+                runOnUiThread(() -> {
+                    translatedText.setText(translated);
+                    cacheTextTranslated = translated;
+                });
+            } catch (JSONException e) {
+                Log.e("TranslateError", "응답 읽기 실패", e);
+            }
         }
     });
 }
