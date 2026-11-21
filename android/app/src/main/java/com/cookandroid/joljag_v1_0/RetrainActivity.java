@@ -13,6 +13,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.material.snackbar.Snackbar;
@@ -49,29 +51,6 @@ public class RetrainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_retrain);
 
-        // StatusBar, NavigationBar 색상 변경
-        Window window = getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.setStatusBarColor(ContextCompat.getColor(this, R.color.background)); // 원하는 색상으로 변경
-        window.setNavigationBarColor(ContextCompat.getColor(this, R.color.background));
-
-        // 시스템 다크 모드 설정 확인
-        int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        switch (currentNightMode) {
-            case Configuration.UI_MODE_NIGHT_YES:
-                // 다크모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_NO:
-                // 라이트모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_UNDEFINED:
-                // 시스템 설정을 알 수 없을 때 (기본 모드 적용)
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-        }
-
         Button resetButton = findViewById(R.id.button_reset);
         remainingTimeText = findViewById(R.id.remaining_time_text);
 
@@ -99,7 +78,7 @@ public class RetrainActivity extends AppCompatActivity {
                         int minutesLeft = (int) (timeLeft / 1000) / 60;
 
                         // 남은 시간 업데이트
-                        remainingTimeText.setText(String.format("%02d분 %02d초 이후에 초기화 버튼을 사용할 수 있습니다.", minutesLeft, secondsLeft));
+                        remainingTimeText.setText(getString(R.string.retrain_wait, minutesLeft, secondsLeft));
                         handler.postDelayed(this, 1000); // 1초마다 반복 실행
                     } else {
                         // 5분이 지나면 버튼 활성화 및 시간 표시 업데이트 중지
@@ -129,10 +108,10 @@ public class RetrainActivity extends AppCompatActivity {
                 }
 
                 // 초기화 여부를 묻는 팝업 표시
-                new AlertDialog.Builder(RetrainActivity.this)
-                        .setTitle("초기화 확인")
-                        .setMessage("사용자 정보를 정말로 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")
-                        .setPositiveButton("삭제", new DialogInterface.OnClickListener() {
+                new MaterialAlertDialogBuilder(RetrainActivity.this)
+                        .setTitle(R.string.retrain_confirm_title)
+                        .setMessage(R.string.retrain_confirm_message)
+                        .setPositiveButton(R.string.record_delete, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 // 서버 상태를 확인한 후 TaskStatusActivity로 넘어가는 로직 추가
@@ -164,7 +143,7 @@ public class RetrainActivity extends AppCompatActivity {
                                 });
                             }
                         })
-                        .setNegativeButton("취소", null) // 취소 버튼을 누르면 팝업만 닫힘
+                        .setNegativeButton(R.string.cancel, null) // 취소 버튼을 누르면 팝업만 닫힘
                         .show();
             }
         });
