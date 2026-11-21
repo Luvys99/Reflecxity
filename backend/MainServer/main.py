@@ -4,10 +4,9 @@ import configparser
 from typing import List
 import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 import requests
-import io
 from dotenv import load_dotenv
 
 from file_manager import FileHandler
@@ -230,31 +229,6 @@ async def model_check(user_uuid: str):
         logging.error(f"모델 생성 시간 초과: {user_uuid}: {elapsed_ms / 1000:.0f}초")
         raise HTTPException(status_code=500, detail="모델 생성 시간 초과")
     return {"message": "모델 파일 없음"}
-
-
-@app.get(
-    "/user/{user_uuid}/raw/{filename}",
-    tags=["녹음 파일"],
-    summary="파일 받기",
-    description="Model Server의 `GET /user/{user_uuid}/raw/{filename}`로 파일을 받아 그대로 내려준다. TTS 결과는 `convert.wav`.",
-)
-async def download_file(user_uuid: str, filename: str):
-    try:
-        response = requests.get(f"{MODEL_SERVER_API_URL}/user/{user_uuid}/raw/{filename}", timeout=10)
-        response.raise_for_status()
-        wav_data = response.content
-        wav_file = io.BytesIO(wav_data)
-
-        logging.info(f"파일 다운로드 성공: {filename}")
-        return StreamingResponse(
-            wav_file, 
-            media_type="audio/wav",
-            headers={"Content-Disposition": f"attachment; filename={filename}"},
-        )
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"파일 다운로드 중 오류 발생: {e}")
-        raise HTTPException(status_code=500, detail=f"파일 다운로드 중 오류 발생: {e}")
 
 
 @app.post(

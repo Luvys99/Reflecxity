@@ -85,29 +85,18 @@ UVR(잡음 제거) 모델(약 1GB)은 **첫 학습 때 `uvrmodel/` 폴더로 자
 - 주소: `http://localhost:48000`
 - API 문서(Swagger): `http://localhost:48000/docs`
 
-### 5. 동작 확인 (업로드 → 학습 → TTS)
+### 5. 동작 확인
 
 `test-user`는 예시 사용자 ID이고, `voice.wav`는 1분 이상 말한 녹음 파일입니다.
 
 ```bash
-# 1) 녹음 업로드 → user/test-user/raw/
+# 녹음 업로드 → user/test-user/raw/
 curl -F "file=@voice.wav" localhost:48000/user/test-user/upload
-
-# 2) 학습 요청 (백그라운드에서 실행)
-curl -X POST localhost:48000/models -H "Content-Type: application/json" \
-  -d '{"user_uuid":"test-user"}'
-
-# 3) 학습 완료 확인 → {"message":"모델 파일 존재"}가 나오면 완료
-curl localhost:48000/user/test-user/modelcheck
-
-# 4) TTS 변환 → user/test-user/convert.wav
-curl -X POST localhost:48000/tts -H "Content-Type: application/json" \
-  -d '{"user_uuid":"test-user","tts_text":"Hello, this is my voice.","pitch":0}'
-curl localhost:48000/user/test-user/status   # {"tts":"success"}가 나오면 완료
+curl localhost:48000/user/test-user/files
 ```
 
-1분 48초짜리 녹음 기준으로 UVR을 뺀 학습(자르기 → 특징 추출 → 2 epoch 학습)은 약 3분 30초, TTS 변환은 15초 정도 걸렸습니다.
-진행 단계는 `logs/test-user/`에 생기는 파일로도 확인할 수 있습니다 (마지막에 `pitch.txt`가 생기면 완료, `fail`이 생기면 실패).
+학습과 TTS는 Model 서버의 HTTP 주소가 아니라 워커(`train_worker.py`, `tts_worker.py`)가 Redis에서 작업을 꺼내 처리합니다 ([#17](../../issues/17), [#47](../../issues/47)).
+전체 흐름은 Main까지 켜고 아래 "Main Server 실행"의 동작 확인으로 봅니다.
 
 ### 참고
 

@@ -12,23 +12,17 @@ import librosa
 import numpy as np
 import shutil
 import soundfile as sf
-from fastapi import FastAPI, HTTPException, Body, File, UploadFile, Path
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, File, UploadFile, Path
 from typing import Optional
-from status import StatusManager  # status.py 임포트
 from command import run_command_async
-from training import create_model_async, prepare_training, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES
-from tts import find_model_files, synthesize_voice
 
 from pydub import AudioSegment
 import asyncio  # asyncio를 임포트
 import time
-from fastapi.background import BackgroundTasks
 from concurrent.futures import ThreadPoolExecutor
 from scipy.spatial.distance import cdist  # DTW를 위한 라이브러리 추가 
 
 executor = ThreadPoolExecutor()
-status_manager = StatusManager()
 
 app = FastAPI()
 
@@ -98,34 +92,12 @@ async def delete_file(user_uuid: str, filename: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"파일 삭제 중 오류 발생: {e}")
 
-# 파일 다운로드 기능 추가 
-@app.get(
-    "/user/{user_uuid}/raw/{filename}",
-    tags=["녹음 파일"],
-    summary="파일 받기",
-    description="주소에 `raw`가 있지만 실제로는 `user/{user_uuid}/{filename}`(raw 폴더가 아님)을 내려준다. TTS 결과 `convert.wav`를 받을 때 쓴다.",
-)
-async def download_file(user_uuid: str, filename: str):
-    try:
-        file_path = os.path.join(".", "user", user_uuid, filename)
-        if os.path.exists(file_path):
-            return FileResponse(
-                file_path,
-                media_type="audio/wav",  # 파일 타입 명시
-                headers={"Content-Disposition": f"attachment; filename={filename}"},
-            )
-        else:
-            raise HTTPException(status_code=404, detail="파일을 찾을 수 없음")
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"파일 다운로드 중 오류 발생: {e}")
-
 # 사용자 삭제 기능 추가 (폴더 존재 여부 판단 개선)
 @app.delete(
     "/user/{user_uuid}",
     tags=["사용자"],
     summary="사용자 폴더 삭제",
-    description="`user/{user_uuid}/`(녹음, TTS 결과)와 `logs/{user_uuid}/`(학습 결과, 모델)를 지운다.",
+    description="`user/{user_uuid}/`(녹음)와 `logs/{user_uuid}/`(학습 결과, 모델)를 지운다.",
 )
 def delete_user(user_uuid: str):
     try:
@@ -156,180 +128,6 @@ def delete_user(user_uuid: str):
     except Exception as e:
         print(f"사용자 삭제 중 오류 발생: {e}")
         raise HTTPException(status_code=500, detail=f"사용자 삭제 중 오류 발생: {e}")
-
-# 모델 파일 존재 확인 API 추가
-@app.get(
-    "/user/{user_uuid}/modelcheck",
-    tags=["학습"],
-    summary="학습 완료 확인",
-    description="학습 상태(`user/{user_uuid}/status.json`의 `train`)가 `fail`이거나 `logs/{user_uuid}/fail` 파일이 있으면 \"모델 생성 실패\", `pitch.txt`가 있으면 \"모델 파일 존재\", 그 외는 \"모델 파일 없음\"(진행 중). 실패 원인은 `GET /user/{user_uuid}/status`의 `train_error`.",
-)
-def check_model_files(user_uuid: str):
-    # 학습 상태가 fail이면 실패 (run_training이 어떤 에러든 기록한다)
-    # UVR 단계에서 실패하면 logs 폴더가 아직 없으므로, 폴더를 읽기 전에 맨 앞에서 본다
-    if status_manager.get_status(user_uuid).get("train") == "fail":
-        return {"message": "모델 생성 실패"}
-    try:
-        model_dir = os.path.join(".", "logs", user_uuid)
-        pitch = [f for f in os.listdir(model_dir) if "pitch.txt" in f]
-        fail_file_path = os.path.join(model_dir, "fail")
-        '''
-        pth_files = [
-            f for f in os.listdir(model_dir) if f.endswith(".pth") and user_uuid in f
-        ]
-        index_files = [
-            f
-            for f in os.listdir(model_dir)
-            if f.startswith("added_") and f.endswith(".index")
-        ]
-        '''
-        # fail 파일 존재 여부 확인
-        if os.path.exists(fail_file_path):
-            return {"message": "모델 생성 실패"}
-        if pitch:
-            return {"message": "모델 파일 존재"}
-        else:
-            return {"message": "모델 파일 없음"}
-    
-    except FileNotFoundError:
-        return {"message": "모델 파일 없음"}  # 모델 폴더가 없을 경우 예외 처리
-        #raise HTTPException(status_code=500, detail=f"모델 파일 확인 중 오류 발생: {e}")
-    except Exception as e:
-        # 예외 발생 시 에러 메시지 반환 (오류 메시지 출력)
-        print(f"모델 파일 확인 중 오류 발생: {e}")
-        raise HTTPException(status_code=500, detail=f"모델 파일 확인 중 오류 발생: {e}") 
-
-
-
-# 모델 생성 요청 처리 함수 (비동기 처리 추가)
-@app.post(
-    "/models",
-    tags=["학습"],
-    summary="학습 시작",
-    description="백그라운드로 학습 파이프라인을 실행하고 바로 응답한다: 녹음 합치기 → UVR(잡음 제거, `raw/`에 .ogg가 있으면 건너뜀) → preprocess(자르기) → extract(음높이·음색) → train(2 epoch) → index → pitch 찾기(`pitch.txt`). 각 단계는 `rvc_cli.py` / `uvr_cli.py`를 하위 프로세스로 실행한다.",
-)
-async def create_model(background_tasks_model: BackgroundTasks, model_data: dict = Body(...)):  # 인수 순서 변경
-    try:
-        # 요청 데이터에서 필요한 정보 추출 (model_name 제외)
-        user_uuid = model_data.get("user_uuid")
-        sample_rate = model_data.get("sample_rate", DEFAULT_SAMPLE_RATE)
-        cpu_cores = model_data.get("cpu_cores", DEFAULT_CPU_CORES)
-        # 입력값 검증
-        if not user_uuid:
-            raise ValueError("user_uuid is required")
-
-        dataset_path, voice_file_name = prepare_training(user_uuid)
-
-        model_name = user_uuid
-        model_id = model_name
-       
-
-        #for file_path in file_paths:
-        #    audio, _ = librosa.load(file_path, sr=sr)
-        # --- m4a 파일을 ogg 파일로 변환 ---
-        '''for filename in os.listdir(dataset_path):
-            if filename.endswith(".m4a"):
-                m4a_file = os.path.join(dataset_path, filename)
-                ogg_file = os.path.join(dataset_path, filename[:-4] + ".ogg")  # 확장자 변경
-                convert_m4a_to_ogg(m4a_file, ogg_file)
-                print(f"Converted {filename} to ogg format.")
-                # 기존 m4a 파일 삭제
-                os.remove(m4a_file)  # 기존 m4a 파일 삭제
-                print(f"Removed {filename}")'''
-
-        # 응답하기 전에 상태를 progress로 바꾼다 (이전 학습의 fail이 남아 있으면 Main이 바로 실패로 읽기 때문)
-        status_manager.update_status(user_uuid=model_name, task="train", value="progress")
-        status_manager.update_status(user_uuid=model_name, task="train_error", value="")
-
-        # 모델 생성 작업을 백그라운드에서 실행
-        background_tasks_model.add_task(run_training, model_name, dataset_path, sample_rate, cpu_cores, voice_file_name)
-
-        # 즉시 응답 반환
-        return {
-            "message": "모델 생성 작업이 백그라운드에서 실행 중입니다.",
-            "model_id": model_id
-        }
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"모델 생성 중 오류 발생: {e}")
-
-# 학습을 실행하고 결과(성공 / 실패 + 원인)를 상태 파일에 남긴다
-# create_model_async 안의 어느 단계에서 에러가 나도 여기서 잡아 fail로 기록한다 (#11)
-async def run_training(model_name, dataset_path, sample_rate, cpu_cores, voice_file_name):
-    try:
-        await create_model_async(model_name, dataset_path, sample_rate, cpu_cores, voice_file_name)
-        status_manager.update_status(user_uuid=model_name, task="train", value="success")
-    except Exception as e:
-        reason = e.detail if isinstance(e, HTTPException) else f"{type(e).__name__}: {e}"
-        print(f"[Model {model_name}] 학습 실패: {reason}")
-        status_manager.update_status(user_uuid=model_name, task="train", value="fail")
-        status_manager.update_status(user_uuid=model_name, task="train_error", value=reason)
-
-
-
-
-
-# 상태 확인 api
-@app.get(
-    "/user/{user_uuid}/status",
-    tags=["TTS"],
-    summary="TTS 상태",
-    description="`user/{user_uuid}/status.json` (`status.py`). `tts`: idle / progress / success / fail. `train`: progress / success / fail, `train_error`: 학습 실패 원인.",
-)
-def get_user_status(user_uuid: str):
-    status = status_manager.get_status(user_uuid)
-    return status
-
-# TTS 실행 함수
-@app.post(
-    "/tts",
-    tags=["TTS"],
-    summary="TTS (텍스트 → 내 목소리)",
-    description="상태를 progress로 바꾸고 백그라운드로 실행한 뒤 바로 응답한다: edge-tts로 영어 기계 음성(`temptts/{user_uuid}_{무작위}.ogg`, 요청마다 따로, 끝나면 지움) → 학습한 모델(.pth, .index)로 RVC 변환 → `user/{user_uuid}/convert.wav`. 끝나면 success, 에러면 fail.",
-)
-async def synthesize_tts(background_tasks_tts: BackgroundTasks, tts_data: dict = Body(...)):
-    try:
-        user_uuid = tts_data.get("user_uuid")
-        status_manager.update_status(user_uuid=user_uuid, task="tts", value="progress") # TTS 작업 시작 시 "progress" 상태로 변경
-        tts_text = tts_data.get("tts_text")
-        pitch = tts_data.get("pitch")  # 기본값 설정
-
-        # 입력값 검증
-        if not user_uuid:
-            raise ValueError("user_uuid is required")
-        if not tts_text:
-            raise ValueError("tts_text is required")
-
-        pth_path, index_path = find_model_files(user_uuid)
-        status_manager.update_status(user_uuid=user_uuid, task="tts", value="progress")
-        print("testing")
-        background_tasks_tts.add_task(synthesize_tts_async, pth_path, index_path, tts_text, user_uuid, pitch)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"TTS 합성 중 오류 발생: {e}"
-        )
-
-async def synthesize_tts_async(pth_path, index_path, tts_text, user_uuid, pitch):
-    try:
-        await synthesize_voice(user_uuid, tts_text, pitch, pth_path, index_path, os.path.join(".", "user", user_uuid, "convert.wav"))
-
-        status_manager.update_status(user_uuid=user_uuid, task="tts", value="success")
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        status_manager.update_status(user_uuid=user_uuid, task="tts", value="fail")  # TTS 실패 시 "fail" 상태로 변경
-        raise HTTPException(
-            status_code=500, detail=f"TTS 합성 중 오류 발생: {e}"
-        )
 
 
 def convert_m4a_to_ogg(m4a_file: str, ogg_file: str):
