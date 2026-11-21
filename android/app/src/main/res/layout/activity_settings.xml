@@ -1,134 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 설정 (#87): 목록형. 각 줄에 한 줄 설명 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/layout"
-    android:layout_width="300dp"
-    android:layout_height="415dp"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@drawable/rounded_background">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/sand"
+    android:orientation="vertical">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/settings_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/sand"
+        android:theme="@style/ThemeOverlay.AppCompat.Light"
+        app:navigationIcon="@drawable/arrow_back"
+        app:navigationContentDescription="뒤로">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/pretendard_bold"
+            android:text="@string/settings_title"
+            android:textColor="@color/ink"
+            android:textSize="20sp" />
+    </androidx.appcompat.widget.Toolbar>
 
     <TextView
-        android:id="@+id/textView3"
+        style="@style/TextAppearance.Reflecxity.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginBottom="5dp"
-        android:text="환경설정"
-        android:textColor="@color/grey900"
-        android:textSize="24sp" />
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/settings_section_voice" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="10dp">
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/txt_retrain"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textSize="16sp"
-            android:textColor="@color/grey900"
-            android:text="데이터 재학습" />
-
-        <TextView
-            android:id="@+id/txt_qrExport"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textSize="16sp"
-            android:textColor="@color/grey900"
-            android:text="데이터 이전" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <ImageButton
-            android:id="@+id/button_retrain"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:layout_weight="1"
-            android:adjustViewBounds="true"
-            android:background="@drawable/rounded_btn_background"
-            android:backgroundTint="@color/btn_green"
-            android:scaleType="centerInside"
-            app:srcCompat="@drawable/model_training" />
-
-        <ImageButton
-            android:id="@+id/button_data_transfer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="10dp"
-            android:layout_weight="1"
-            android:adjustViewBounds="true"
-            android:background="@drawable/rounded_btn_background"
-            android:backgroundTint="@color/btn_green"
-            android:scaleType="centerInside"
-            app:srcCompat="@drawable/qr_icon" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="10dp">
-
-        <TextView
-            android:id="@+id/txt_deviceErase"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textSize="16sp"
-            android:textColor="@color/grey900"
-            android:text="기기 데이터 삭제" />
-
-        <TextView
-            android:id="@+id/txt_pitchSetting"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textSize="16sp"
-            android:textColor="@color/grey900"
-            android:text="목소리 높낮이 조절" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="horizontal">
-
-        <ImageButton
-            android:id="@+id/device_erase"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_margin="10dp"
-            android:adjustViewBounds="true"
-            android:scaleType="centerInside"
-            android:background="@drawable/rounded_btn_background"
-            android:backgroundTint="@color/btn_green"
-            app:srcCompat="@drawable/device_erase" />
-
-        <ImageButton
+        <LinearLayout
             android:id="@+id/pitch_setting"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_margin="10dp"
-            android:adjustViewBounds="true"
-            android:scaleType="centerInside"
-            android:background="@drawable/rounded_btn_background"
-            android:backgroundTint="@color/btn_green"
-            app:srcCompat="@drawable/tune" />
-    </LinearLayout>-->
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="14dp">
 
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:importantForAccessibility="no"
+                android:padding="9dp"
+                android:src="@drawable/tune"
+                app:tint="@color/sky" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_medium"
+                    android:text="@string/settings_pitch"
+                    android:textColor="@color/ink"
+                    android:textSize="16sp" />
+
+                <TextView
+                    style="@style/TextAppearance.Reflecxity.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_pitch_desc" />
+            </LinearLayout>
+            <TextView
+                android:id="@+id/txt_pitch_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:fontFamily="@font/pretendard_semibold"
+                android:textColor="@color/sky"
+                android:textSize="14sp" />
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_chevron_right" />
+        </LinearLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="70dp"
+            android:background="@color/sand_dark" />
+        <LinearLayout
+            android:id="@+id/button_retrain"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="14dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:importantForAccessibility="no"
+                android:padding="9dp"
+                android:src="@drawable/model_training"
+                app:tint="@color/sky" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_medium"
+                    android:text="@string/settings_retrain"
+                    android:textColor="@color/ink"
+                    android:textSize="16sp" />
+
+                <TextView
+                    style="@style/TextAppearance.Reflecxity.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_retrain_desc" />
+            </LinearLayout>
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_chevron_right" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        style="@style/TextAppearance.Reflecxity.Caption"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/settings_section_device" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:background="@drawable/bg_card"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/button_data_transfer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="14dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile"
+                android:importantForAccessibility="no"
+                android:padding="9dp"
+                android:src="@drawable/qr_icon_small"
+                app:tint="@color/sky" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_medium"
+                    android:text="@string/settings_transfer"
+                    android:textColor="@color/ink"
+                    android:textSize="16sp" />
+
+                <TextView
+                    style="@style/TextAppearance.Reflecxity.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_transfer_desc" />
+            </LinearLayout>
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_chevron_right" />
+        </LinearLayout>
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginStart="70dp"
+            android:background="@color/sand_dark" />
+        <LinearLayout
+            android:id="@+id/device_erase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="14dp">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_icon_tile_danger"
+                android:importantForAccessibility="no"
+                android:padding="9dp"
+                android:src="@drawable/device_erase"
+                app:tint="@color/danger" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_medium"
+                    android:text="@string/settings_erase"
+                    android:textColor="@color/danger"
+                    android:textSize="16sp" />
+
+                <TextView
+                    style="@style/TextAppearance.Reflecxity.Caption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/settings_erase_desc" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="20dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/button_terms"
+            style="@style/Widget.Reflecxity.Button.Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_terms"
+            android:textColor="@color/ink2" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/txt_version"
+            style="@style/TextAppearance.Reflecxity.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
 </LinearLayout>

@@ -62,7 +62,6 @@
         <activity
             android:name=".SettingsActivity"
             android:screenOrientation="portrait"
-            android:theme="@style/PopupActivityTheme"
             android:windowSoftInputMode="stateAlwaysHidden" />
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"

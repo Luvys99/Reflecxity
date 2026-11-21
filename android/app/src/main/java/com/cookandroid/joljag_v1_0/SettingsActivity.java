@@ -1,45 +1,55 @@
 package com.cookandroid.joljag_v1_0;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+// 설정 (#87): 목소리 높이, 다시 학습, 다른 기기로 옮기기, 이 기기에서 지우기
 public class SettingsActivity extends AppCompatActivity {
     // 사용자가 피치를 저장한 적 없음. 이때 TTS 요청에 피치를 보내지 않아 서버가 학습 때 잰 자동 피치를 쓴다 (#72)
     public static final int PITCH_NOT_SET = Integer.MIN_VALUE;
+    // 서버가 자동 피치를 −12 ~ +12로 제한한다 (#59). 직접 조절도 같은 범위
+    private static final int MAX_PITCH = 12;
 
-    public ImageButton button_retrain;
-    public ImageButton button_data_transfer;
-    public ImageButton device_erase;
-    public ImageButton pitch_setting;
-    public static boolean isFirst_tts;
-    public static boolean isFirst_dialog;
+    public View button_retrain;
+    public View button_data_transfer;
+    public View device_erase;
+    public View pitch_setting;
+    private TextView txtPitchValue;
+    private SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        supportRequestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.activity_settings);
+
+        Toolbar toolbar = findViewById(R.id.settings_toolbar);
+        toolbar.setNavigationOnClickListener(v -> finish());
 
         button_retrain = findViewById(R.id.button_retrain);
         button_data_transfer = findViewById(R.id.button_data_transfer);
         device_erase = findViewById(R.id.device_erase);
         pitch_setting = findViewById(R.id.pitch_setting);
+        txtPitchValue = findViewById(R.id.txt_pitch_value);
+
+        ((TextView) findViewById(R.id.txt_version)).setText(getString(R.string.settings_version, BuildConfig.VERSION_NAME));
+        findViewById(R.id.button_terms).setOnClickListener(v -> showTerms());
 
         button_retrain.setOnClickListener(v -> {
             Intent intent = new Intent(SettingsActivity.this, RetrainActivity.class);
@@ -51,125 +61,111 @@ public class SettingsActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // UUID 가져오기
-        SharedPreferences sharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
+        sharedPreferences = getSharedPreferences("AppPreferences", MODE_PRIVATE);
         String uuid = sharedPreferences.getString("UUID", null);
-        isFirst_tts = sharedPreferences.getBoolean("isFirst_tts", true);
-        isFirst_dialog = sharedPreferences.getBoolean("isFirst_dialog", true);
 
-        if (uuid != null) {
-            // UUID 암호화
-            String encryptedUUID = encryptUUID(uuid);
-            String QRUUID = "AVCSIA-" + encryptedUUID;
+        device_erase.setOnClickListener(v -> {
+            if (uuid == null) {
+                Snackbar.make(findViewById(R.id.layout), R.string.settings_no_user, Snackbar.LENGTH_SHORT).setAction(R.string.ok, view -> {}).show();
+                return;
+            }
 
-            device_erase.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (uuid == null) {
-                        Snackbar.make(findViewById(R.id.layout), "사용자 정보를 확인할 수 없습니다. 문제가 계속되면 재설치 해주세요.", Snackbar.LENGTH_SHORT).setAction("확인",new View.OnClickListener() { @Override public void onClick(View v) {}}).show();
-                        return;
-                    }
+            // 지울지 묻고, 지우면 이 기기의 사용자 정보만 지운 뒤 시작 화면으로 (서버 데이터는 남는다)
+            new MaterialAlertDialogBuilder(SettingsActivity.this)
+                    .setTitle(R.string.settings_erase_title)
+                    .setMessage(R.string.settings_erase_message)
+                    .setPositiveButton(R.string.record_delete, (dialog, which) -> {
+                        SharedPreferences.Editor editor = sharedPreferences.edit();
+                        editor.remove("UUID");
+                        editor.remove("isUserCreated");
+                        editor.remove("isFilesUploaded");
+                        editor.remove("isModelRequest");
+                        editor.remove("isModelCreated");
+                        editor.apply();
 
-                    // 초기화 여부를 묻는 팝업 표시
-                    new AlertDialog.Builder(SettingsActivity.this)
-                            .setTitle("초기화 확인")
-                            .setMessage("본 기능은 QR을 통한 다른 기기로 데이터 이전 후, 서버에는 데이터를 남기고 기존 기기에서만 데이터를 지우시고 싶으신 경우에 사용할 수 있는 기능입니다. \n\n완전 데이터 삭제를 원하실 경우, 데이터 재학습 기능을 사용해주세요. \n\n 정말로 기기에서 사용자 정보를 삭제하시겠습니까?")
-                            .setPositiveButton("삭제", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    // SharedPreferences에서 UUID 삭제
-                                    SharedPreferences.Editor editor = sharedPreferences.edit();
-                                    editor.remove("UUID");
-                                    editor.remove("isUserCreated");
-                                    editor.remove("isFilesUploaded");
-                                    editor.remove("isModelRequest");
-                                    editor.remove("isModelCreated");
-                                    editor.apply();
-
-                                    // UUID 삭제 후 WelcomeActivity로 이동
-                                    Intent welcomeIntent = new Intent(SettingsActivity.this, WelcomeActivity.class);
-                                    Intent dataLearningIntent = new Intent(SettingsActivity.this, DataLearningActivity.class);
-                                    dataLearningIntent.putExtra("FROM", "ReTrain");
-                                    startActivity(welcomeIntent);
-                                    finish(); // 현재 Activity 종료
-                                }
-                            })
-                            .setNegativeButton("취소", null) // 취소 버튼을 누르면 팝업만 닫힘
-                            .show();
-                }
-            });
-        }
-
-        pitch_setting.setOnClickListener(v -> {
-            // showPitchDialog() 메서드 호출로 변경
-            showPitchDialog(SettingsActivity.this, sharedPreferences);
+                        Intent welcomeIntent = new Intent(SettingsActivity.this, WelcomeActivity.class);
+                        startActivity(welcomeIntent);
+                        finish();
+                    })
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
         });
+
+        pitch_setting.setOnClickListener(v -> showPitchDialog(this, sharedPreferences, this::showPitchValue));
+        showPitchValue();
     }
 
-    public static void showPitchDialog(Context context, SharedPreferences sharedPreferences) {
-        // 피치 값을 가져오고 초기 설정 여부 확인
-        int tts_pitch = sharedPreferences.getInt("tts_pitch", PITCH_NOT_SET);
+    // 목록에 지금 목소리 높이를 보여 준다: 저장한 적 없으면 "자동"
+    private void showPitchValue() {
+        int pitch = sharedPreferences.getInt("tts_pitch", PITCH_NOT_SET);
+        txtPitchValue.setText(pitch == PITCH_NOT_SET ? getString(R.string.settings_pitch_auto) : formatPitch(pitch));
+    }
 
-        if (tts_pitch == PITCH_NOT_SET) {
-            // 피치 값이 설정된 적이 없는 경우 초기값을 0으로 표시
-            tts_pitch = 0;
-        }
+    private static String formatPitch(int pitch) {
+        return pitch > 0 ? "+" + pitch : String.valueOf(pitch);
+    }
 
-        SharedPreferences.Editor editor = sharedPreferences.edit();
+    // 목소리 높이 창. 저장하면 그 값을 쓰고, 자동을 누르면 저장한 값을 지워 서버의 자동 피치를 쓴다 (#72, #87)
+    public static void showPitchDialog(Context context, SharedPreferences sharedPreferences, Runnable onChanged) {
+        int savedPitch = sharedPreferences.getInt("tts_pitch", PITCH_NOT_SET);
+        boolean isAuto = savedPitch == PITCH_NOT_SET;
+        int startPitch = isAuto ? 0 : Math.max(-MAX_PITCH, Math.min(MAX_PITCH, savedPitch));
 
-        // 커스텀 뷰를 설정
         View customView = LayoutInflater.from(context).inflate(R.layout.pitch_dialog_custom_view, null);
         TextView pitchTextView = customView.findViewById(R.id.pitch);
         SeekBar seekBar = customView.findViewById(R.id.seek_bar);
-        LinearLayout FirstRun = customView.findViewById(R.id.FirstRun);
 
-        if (isFirst_dialog) {
-            FirstRun.setVisibility(View.VISIBLE);
-            editor.putBoolean("isFirst_dialog", false);
-            editor.apply();
-        } else {
-            FirstRun.setVisibility(View.GONE);
-        }
+        seekBar.setMax(MAX_PITCH * 2);
+        seekBar.setProgress(startPitch + MAX_PITCH);
+        pitchTextView.setText(isAuto ? context.getString(R.string.pitch_current_auto) : formatPitch(startPitch));
 
-        // 시크바 초기화 (0부터 48까지 설정)
-        seekBar.setMax(48);
-        seekBar.setProgress(tts_pitch + 24); // 초기값을 -24에서 24의 중간인 0으로 설정
-        pitchTextView.setText(String.valueOf(tts_pitch));
-
-        // 시크바의 변경 이벤트 리스너 설정
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                int displayedValue = progress - 24; // 실제 표시할 값 (범위: -24 ~ 24)
-                pitchTextView.setText(String.valueOf(displayedValue)); // TextView에 표시
+                if (fromUser) {
+                    pitchTextView.setText(formatPitch(progress - MAX_PITCH));
+                }
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-                // 사용자가 시크바를 터치할 때 호출됨
-            }
+            public void onStartTrackingTouch(SeekBar seekBar) { }
 
             @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                // 사용자가 시크바의 터치를 멈출 때 호출됨
-            }
+            public void onStopTrackingTouch(SeekBar seekBar) { }
         });
 
-        // AlertDialog 설정
-        new AlertDialog.Builder(context)
-                .setView(customView) // 커스텀 뷰를 설정
-                .setPositiveButton("저장", (dialog, which) -> {
-                    // 다이얼로그 확인 버튼 클릭 시, 현재 시크바 값을 저장
-                    int displayedValue = seekBar.getProgress() - 24;
-                    editor.putInt("tts_pitch", displayedValue);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        new MaterialAlertDialogBuilder(context)
+                .setTitle(R.string.pitch_title)
+                .setView(customView)
+                .setPositiveButton(R.string.save, (dialog, which) -> {
+                    editor.putInt("tts_pitch", seekBar.getProgress() - MAX_PITCH);
                     editor.apply();
+                    onChanged.run();
                 })
-                .setNeutralButton("자동", (dialog, which) -> {
-                    // 저장한 피치를 지워 다시 자동 피치로 (#72)
+                .setNeutralButton(R.string.settings_pitch_auto, (dialog, which) -> {
                     editor.remove("tts_pitch");
                     editor.apply();
+                    onChanged.run();
                 })
-                .setNegativeButton("취소", null)
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void showTerms() {
+        StringBuilder terms = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(getAssets().open("terms.txt")))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                terms.append(line).append('\n');
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.terms_full)
+                .setMessage(terms.toString())
+                .setPositiveButton(R.string.close, null)
                 .show();
     }
 
