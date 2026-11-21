@@ -20,27 +20,5 @@
     <color name="danger">#C2410C</color>
     <color name="danger_tint">#FBE6DE</color>
 
-    <!-- 원래 이름: 화면별 작업 전까지 새 색으로 대응 (#78). 화면을 고칠 때 새 이름으로 바꾸고, 다 바꾸면 지운다 -->
-    <color name="background">@color/sand</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="grey900">@color/ink</color>
-    <color name="grey800">#2C3644</color>
-    <color name="grey700">@color/ink2</color>
-    <color name="grey600">@color/ink3</color>
-    <color name="grey500">#8A8F96</color>
-    <color name="grey400">#C9BFAE</color>
-    <color name="grey300">#D9D0C1</color>
-    <color name="grey200">@color/line</color>
-    <color name="grey100">@color/sand_dark</color>
-    <color name="grey50">#FBF8F3</color>
-    <color name="red">@color/danger_tint</color>
-    <color name="red_txtcolor">@color/danger</color>
-    <color name="green">@color/success</color>
-    <color name="green_txtcolor">@color/sky</color>
-    <color name="status_green">@color/success</color>
-    <color name="btn_green">@color/sky_tint</color>
-    <color name="edittxt_green">@color/card</color>
-    <color name="ripple_color">@color/sky_line</color>
     <color name="transparent">#00FFFFFF</color>
 </resources>
