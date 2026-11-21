@@ -66,6 +66,7 @@ Main(`MainServer/train_queue.py`)과 워커(`ModelServer/job_worker.py`, `*_work
 | `user:{uuid}:train` | String | Main | 그 사용자의 최근 학습 `job_id` |
 | `job:{job_id}:result` | String (bytes) | 워커 → Main(`GETDEL`) | 작업 결과 (TTS는 wav). Main이 가져가면서 지움, 못 가져가면 10분 뒤 자동 삭제 |
 | `job:{job_id}:done` | List | 워커 → Main(`BLPOP`) | 최종 `success` / `fail` 신호 (재시도 중에는 없음). 10분 뒤 자동 삭제 |
+| `translate:chars:{YYYY-MM-DD}` | String (숫자) | Main만 (`translation_limit.py`) | 그날 번역한 글자 수. `TRANSLATE_DAILY_CHAR_LIMIT`을 넘으면 429 (#105). 이틀 뒤 자동 삭제 |
 
 `status`: `queued`(Main) → `progress`(워커) → `success` / `fail`(워커)
 - `android/`: Java 앱. Main Server만 호출합니다.
