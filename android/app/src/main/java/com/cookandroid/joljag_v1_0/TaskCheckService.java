@@ -15,7 +15,7 @@ import androidx.annotation.RequiresApi;
 public class TaskCheckService extends Service {
 
     private static final String TAG = "MyServiceTag";
-    boolean thread_switch = true;
+    boolean isRunning = true;
 
     public TaskCheckService() {
     }
@@ -56,7 +56,7 @@ public class TaskCheckService extends Service {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                while (thread_switch) {
+                while (isRunning) {
 
                     Log.e("Service", "서비스가 실행 중입니다...");
                     try {
@@ -75,7 +75,7 @@ public class TaskCheckService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        thread_switch = false;
+        isRunning = false;
         Log.d(TAG, "onDestroy");
     }
 }

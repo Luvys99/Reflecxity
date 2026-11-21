@@ -17,8 +17,8 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField "String", "GoogleAPI_KEY", properties['googleapi_key']
-        buildConfigField "String", "MainAPI_URL", properties['mainapi_url']
+        buildConfigField "String", "GOOGLE_API_KEY", properties['googleapi_key']
+        buildConfigField "String", "MAIN_API_URL", properties['mainapi_url']
     }
 
     buildTypes {
