@@ -35,7 +35,6 @@
 - 테스트 (Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
   - Main: `cd backend/MainServer && .venv/bin/python -m pytest tests` (앱이 받는 학습·TTS API 응답)
   - Model: `cd backend/ModelServer && .venv/bin/python -m pytest tests` (학습·TTS 워커 규칙, Mac Redis가 켜져 있어야 함, 테스트용 DB 15번만 씀)
-  `backend/*/test.py`는 실제 서버에 요청을 보내는 수동 스크립트라 테스트가 아닙니다 (Model 쪽은 학습까지 요청함)
 - 로컬 실행 (Mac):
   - DB·Redis: `cd backend/MainServer && docker compose up -d` (Tailscale 먼저 켜기)
   - Main: `cd backend/MainServer && .venv/bin/python main.py` → http://localhost:28300/docs (`.env` 필요, README 참고)
@@ -46,11 +45,11 @@
 - `backend/MainServer`: 앱이 부르는 API(FastAPI, 28300)와 MariaDB. Model Server의 코드를 import하지 않습니다.
   - 학습은 `train_queue.py`, TTS는 `tts_queue.py`가 Redis에 작업을 넣고 결과를 읽습니다 (Windows 워커가 처리). 그 밖의 Model 호출(업로드, 파일, 사용자 삭제)은 HTTP
 - `backend/ModelServer`: 프로젝트 코드는 아래 파일뿐입니다.
-  - `main.py`(FastAPI, 48000), `status.py`(사용자별 상태 파일)
+  - `main.py`(FastAPI, 48000. 녹음 파일 올리기·목록·삭제, 사용자 삭제만. 학습·TTS는 HTTP 주소 없이 워커가 Redis로 받는다, #47)
   - `training.py`(학습 파이프라인), `tts.py`(모델 파일 찾기, TTS 실행), `command.py`(하위 프로세스 실행기, 학습·TTS 공용)
   - `job_worker.py`(워커 공통: Redis 스트림에서 꺼내기, `job:{id}` 기록, 재시도. 다시 해도 같은 실패는 `JobFailed`). 워커 이름은 `컴퓨터이름-번호`(`--number`, 기본 1). 한 컴퓨터에 같은 종류의 워커를 여러 개 켤 때는 번호를 다르게, 다시 켤 때는 같은 번호로 (#51)
   - `train_worker.py`(학습 워커, 서버와 별개 프로세스. 학습 한 건만 하고 나머지는 `job_worker.py`, 학습 파이프라인은 `training.py`를 같이 씀)
-  - `tts_worker.py`(TTS 워커, `stream:tts`. TTS 한 건만 하고 나머지는 `job_worker.py`, TTS는 `tts.py`를 같이 씀). 변환은 새 프로세스 없이 워커 안에서 `rvc_cli.run_tts_script`를 부른다(`tts.convert_text_to_voice`, #49). 옛 `synthesize_voice`(새 프로세스)는 Model 서버의 옛 `/tts`만 씀. 워커는 켜질 때 작업을 받기 전에 `tts.prepare_voice_converter()`로 VoiceConverter·HuBERT를 미리 올린다(#54)
+  - `tts_worker.py`(TTS 워커, `stream:tts`. TTS 한 건만 하고 나머지는 `job_worker.py`, TTS는 `tts.py`를 같이 씀). 변환은 새 프로세스 없이 워커 안에서 `rvc_cli.run_tts_script`를 부른다(`tts.convert_text_to_voice`, #49). 워커는 켜질 때 작업을 받기 전에 `tts.prepare_voice_converter()`로 VoiceConverter·HuBERT를 미리 올린다(#54)
   - `tests/`(pytest. 실행 명령은 위 "명령어")
   `rvc_cli.py`, `uvr_cli.py`, `rvc/`, `uvr/`, `docs/`, `assets/`는 외부 rvc-cli 코드라 고치지 않습니다. 꼭 필요하면 먼저 물어봐 주세요.
 - `rvc/configs/*.json`은 실행할 때마다 바뀝니다. 커밋하지 않습니다.
