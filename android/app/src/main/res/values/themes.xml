@@ -1,22 +1,26 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- Base application theme. 새 디자인(시안 C "여행")은 밝은 화면 하나만 쓴다 (#78) -->
     <style name="Theme.Joljag_v1_0" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/green</item>
-        <item name="colorPrimaryVariant">@color/black</item>
-        <item name="colorOnPrimary">@color/black</item>
-        <!-- Secondary brand color. -->
-        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorPrimary">@color/sky</item>
+        <item name="colorPrimaryVariant">@color/sky_dark</item>
+        <item name="colorOnPrimary">@color/on_sky</item>
+        <item name="colorSecondary">@color/sky</item>
+        <item name="colorOnSecondary">@color/on_sky</item>
+        <item name="colorAccent">@color/sky</item>
+        <item name="android:colorBackground">@color/sand</item>
+        <item name="android:windowBackground">@color/sand</item>
+        <item name="android:textColorPrimary">@color/ink</item>
+        <item name="android:textColorSecondary">@color/ink2</item>
         <!-- Status bar color. -->
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="android:statusBarColor">@color/sand</item>
+        <item name="android:navigationBarColor">@color/sand</item>
         <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
         <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
-        <!-- Customize your theme here. -->
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <!-- custom font-family 적용 -->
         <item name="android:fontFamily">@font/pretendard_regular</item>
     </style>
 
@@ -24,5 +28,98 @@
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsFloating">true</item>
         <item name="android:backgroundDimEnabled">true</item>
+    </style>
+
+    <!-- 버튼 (#78): 주 버튼은 화면마다 하나 -->
+    <style name="Widget.Reflecxity.Button.Primary" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="backgroundTint">@color/sky</item>
+        <item name="android:textColor">@color/on_sky</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:fontFamily">@font/pretendard_bold</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="iconTint">@color/on_sky</item>
+        <item name="rippleColor">@color/sky_dark</item>
+    </style>
+
+    <style name="Widget.Reflecxity.Button.Secondary" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:minHeight">52dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="backgroundTint">@color/card</item>
+        <item name="strokeColor">@color/line</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">@font/pretendard_semibold</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="iconTint">@color/ink</item>
+        <item name="rippleColor">@color/sand_dark</item>
+    </style>
+
+    <style name="Widget.Reflecxity.Button.Danger" parent="Widget.Reflecxity.Button.Secondary">
+        <item name="backgroundTint">@color/danger_tint</item>
+        <item name="strokeColor">#F3C9B9</item>
+        <item name="android:textColor">@color/danger</item>
+        <item name="android:fontFamily">@font/pretendard_bold</item>
+    </style>
+
+    <style name="Widget.Reflecxity.Button.Text" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:minHeight">44dp</item>
+        <item name="android:textColor">@color/sky</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">@font/pretendard_semibold</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- 글자 (#78) -->
+    <style name="TextAppearance.Reflecxity" parent="TextAppearance.AppCompat">
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:fontFamily">@font/pretendard_regular</item>
+    </style>
+
+    <style name="TextAppearance.Reflecxity.Display">
+        <item name="android:textSize">26sp</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:fontFamily">@font/pretendard_bold</item>
+        <item name="android:lineSpacingMultiplier">1.2</item>
+    </style>
+
+    <style name="TextAppearance.Reflecxity.Title">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:fontFamily">@font/pretendard_bold</item>
+    </style>
+
+    <style name="TextAppearance.Reflecxity.Body">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:fontFamily">@font/pretendard_regular</item>
+        <item name="android:lineSpacingMultiplier">1.3</item>
+    </style>
+
+    <style name="TextAppearance.Reflecxity.Body.Secondary">
+        <item name="android:textColor">@color/ink2</item>
+    </style>
+
+    <style name="TextAppearance.Reflecxity.Caption">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/ink3</item>
+        <item name="android:fontFamily">@font/pretendard_regular</item>
+    </style>
+
+    <!-- 중요한 숫자 (모은 녹음 시간, 남은 학습 시간): 크게 -->
+    <style name="TextAppearance.Reflecxity.Number">
+        <item name="android:textSize">30sp</item>
+        <item name="android:textColor">@color/ink</item>
+        <item name="android:fontFamily">@font/pretendard_bold</item>
+        <item name="android:fontFeatureSettings">tnum</item>
     </style>
 </resources>
