@@ -368,6 +368,13 @@ private void stopListening() {
 
 // 번역은 Main이 대신 Google을 부른다. 번역 키는 서버에만 있다 (#102)
 private void translateText(String originalText) {
+    // 빈 문장은 서버에 보내지 않고 결과만 비운다 (서버는 빈 문장에 400)
+    if (originalText.trim().isEmpty()) {
+        translatedText.setText("");
+        cacheTextTranslated = "";
+        return;
+    }
+
     OkHttpClient client = new OkHttpClient();
 
     JSONObject body = new JSONObject();
