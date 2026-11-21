@@ -1,99 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 목소리 높이 창 (#87): 설명 + 지금 값 + −12 ~ +12 슬라이더 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:gravity="center">
-
-    <LinearLayout
-        android:id="@+id/FirstRun"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="visible"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/start_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginLeft="15dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginRight="15dp"
-            android:layout_marginBottom="5dp"
-            android:fontFamily="@font/pretendard_semibold"
-            android:text="처음 오셨나요?"
-            android:textAlignment="center"
-            android:textColor="#000000"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/start_txt"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="15dp"
-            android:layout_marginTop="5dp"
-            android:layout_marginRight="15dp"
-            android:layout_marginBottom="15dp"
-            android:lineSpacingExtra="5dp"
-            android:text="방금 들으신 목소리가 어떠셨나요?\n\n너무 낮다면 아래의 설정값을 높여주세요.\n반대로 높낮이가 너무 높았다면 설정값을 낮춰주세요.\n이 메뉴는 메인 화면의 오른쪽 상단 '환경설정'을 누르시면 있는 '목소리 높낮이 조절' 메뉴로 다시 들어오실 수 있습니다."
-            android:textAlignment="center"
-            android:textColor="#000000"
-            android:textSize="16sp" />
-    </LinearLayout>
+    android:paddingStart="24dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="24dp">
 
     <TextView
-        android:id="@+id/textView6"
+        style="@style/TextAppearance.Reflecxity.Body.Secondary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/pitch_body"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/pitch"
+        style="@style/TextAppearance.Reflecxity.Number"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
         android:layout_marginTop="20dp"
-        android:layout_marginLeft="15dp"
-        android:layout_marginRight="15dp"
-        android:layout_marginBottom="15dp"
-        android:text="@string/pitch_guideline"
-        android:lineSpacingExtra="5dp"
-        android:textAlignment="center"
-        android:textColor="#000000"
-        android:textSize="16sp" />
+        android:textSize="26sp" />
 
-    <LinearLayout
+    <SeekBar
+        android:id="@+id/seek_bar"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="center"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/textView7"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="현재 설정값: "
-            android:textColor="#000000"
-            android:textSize="20sp" />
-
-        <TextView
-            android:id="@+id/pitch"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/pretendard_semibold"
-            android:text="0"
-            android:textColor="#000000"
-            android:textSize="20sp" />
-    </LinearLayout>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:progressTint="@color/sky"
+        android:thumbTint="@color/sky" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
         android:orientation="horizontal">
 
-        <SeekBar
-            android:id="@+id/seek_bar"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="center"
-            android:layout_marginLeft="10dp"
-            android:layout_marginRight="10dp"
-            android:padding="10dp"
-            android:progressDrawable="@drawable/custom_seekbar_progress2"
-            android:thumb="@drawable/custom_seekbar_thumb2" />
+        <TextView
+            style="@style/TextAppearance.Reflecxity.Caption"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/pitch_low"
+            android:textSize="12sp" />
+
+        <TextView
+            style="@style/TextAppearance.Reflecxity.Caption"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1.4"
+            android:gravity="center"
+            android:text="@string/pitch_mid"
+            android:textSize="12sp" />
+
+        <TextView
+            style="@style/TextAppearance.Reflecxity.Caption"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:text="@string/pitch_high"
+            android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>
