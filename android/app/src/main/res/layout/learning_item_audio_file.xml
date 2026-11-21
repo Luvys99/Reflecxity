@@ -1,28 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 녹음 목록 한 줄 (#82). 고르면 파란 테두리 (bg_list_item, setSelected) -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="@drawable/bg_list_item"
+    android:minHeight="64dp"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="18dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="18dp"
+    android:paddingBottom="12dp">
 
-    <!-- 녹음 파일 이름을 표시할 TextView -->
     <TextView
         android:id="@+id/audio_file_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="파일 이름"
-        android:textSize="16sp"
-        android:textColor="@color/grey900"
-        android:layout_gravity="center_vertical" />
+        android:fontFamily="@font/pretendard_medium"
+        android:textColor="@color/ink"
+        android:textSize="15sp" />
 
-    <!-- 녹음 파일 시간을 표시할 TextView -->
     <TextView
         android:id="@+id/audio_file_duration"
+        style="@style/TextAppearance.Reflecxity.Caption"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="00:00"
-        android:textSize="14sp"
-        android:textColor="@color/grey700"
-        android:layout_gravity="center_vertical"
-        android:paddingTop="4dp" />  <!-- 파일 이름과 시간 간격 추가 -->
+        android:layout_marginTop="2dp"
+        android:fontFeatureSettings="tnum" />
 </LinearLayout>

@@ -20,10 +20,12 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
@@ -94,6 +96,19 @@ public class DataLearningActivity extends AppCompatActivity {
     private Runnable updateRecordingTime;
     private TextView txt_recordingTime;
 
+    // 학습에 필요한 녹음 길이 (Main 서버가 아니라 앱이 정한 조건)
+    private static final long MIN_TRAINING_MS = 5 * 60 * 1000;
+    private View progressCard;
+    private View tipsRow;
+    private View recordingPanel;
+    private TextView txtTotalRecorded;
+    private TextView txtProgressMessage;
+    private TextView txtListHeader;
+    private ProgressBar progressTotal;
+    private TextView txtReadText;
+    private String[] readTexts;
+    private int readTextIndex = -1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -112,7 +127,18 @@ public class DataLearningActivity extends AppCompatActivity {
         seekBar = findViewById(R.id.seekBar);
 
         txt_recordingTime = findViewById(R.id.txt_recordingTime); // 녹음 시간 TextView 초기화
-        txt_recordingTime.setVisibility(View.GONE); // 초기에는 보이지 않도록 설정
+
+        // 모은 녹음 진행, 녹음 중 읽을 글 (#82)
+        progressCard = findViewById(R.id.progress_card);
+        tipsRow = findViewById(R.id.tips_row);
+        recordingPanel = findViewById(R.id.recording_panel);
+        txtTotalRecorded = findViewById(R.id.txt_total_recorded);
+        txtProgressMessage = findViewById(R.id.txt_progress_message);
+        txtListHeader = findViewById(R.id.txt_list_header);
+        progressTotal = findViewById(R.id.progress_total);
+        txtReadText = findViewById(R.id.txt_read_text);
+        readTexts = getResources().getStringArray(R.array.record_read_texts);
+        findViewById(R.id.button_next_text).setOnClickListener(v -> showNextReadText());
 
         // Toolbar 설정
         Toolbar toolbar = findViewById(R.id.custom_toolbar);
@@ -126,30 +152,7 @@ public class DataLearningActivity extends AppCompatActivity {
 
         Drawable navigationIcon = toolbar.getNavigationIcon();
         if (navigationIcon != null) {
-            navigationIcon.setTint(ContextCompat.getColor(this, R.color.grey900));
-        }
-
-        // StatusBar, NavigationBar 색상 변경
-        Window window = getWindow();
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.setStatusBarColor(ContextCompat.getColor(this, R.color.background)); // 원하는 색상으로 변경
-        window.setNavigationBarColor(ContextCompat.getColor(this, R.color.background));
-
-        // 시스템 다크 모드 설정 확인
-        int currentNightMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
-        switch (currentNightMode) {
-            case Configuration.UI_MODE_NIGHT_YES:
-                // 다크모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_NO:
-                // 라이트모드
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
-            case Configuration.UI_MODE_NIGHT_UNDEFINED:
-                // 시스템 설정을 알 수 없을 때 (기본 모드 적용)
-                window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                break;
+            navigationIcon.setTint(ContextCompat.getColor(this, R.color.ink));
         }
 
         // Intent로부터 데이터 읽기
@@ -170,11 +173,11 @@ public class DataLearningActivity extends AppCompatActivity {
         boolean isFirstGuide = prefs.getBoolean("isFirstGuide", true);
 
         if (isFirstGuide) {
-            new AlertDialog.Builder(DataLearningActivity.this)
-                    .setTitle("학습 가이드라인")
+            new MaterialAlertDialogBuilder(DataLearningActivity.this)
+                    .setTitle(R.string.record_guide_title)
                     .setMessage(getString(R.string.learning_guideline))
-                    .setPositiveButton("확인", null)
-                    .setNeutralButton("다시 표시하지 않음", new DialogInterface.OnClickListener() {
+                    .setPositiveButton(R.string.ok, null)
+                    .setNeutralButton(R.string.dont_show_again, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             // 다음 번에는 다이얼로그가 표시되지 않도록 isFirstLaunch 값을 false로 변경
@@ -197,6 +200,7 @@ public class DataLearningActivity extends AppCompatActivity {
         loadAudioFiles();
         adapter = new AudioFilesAdapter(audioFiles, this::updateActionButtonsVisibility);
         recyclerView.setAdapter(adapter);
+        updateTotalProgress();
 
         // 초기에는 버튼을 숨긴 상태로 설정
         playing.setVisibility(View.GONE);
@@ -210,7 +214,7 @@ public class DataLearningActivity extends AppCompatActivity {
         txt_record.setVisibility(View.VISIBLE);
         txt_currentTime.setVisibility(View.GONE);
         txt_totalTime.setVisibility(View.GONE);
-        txt_recordingTime.setVisibility(View.GONE);
+        syncButtonContainers();
 
         // 버튼 클릭 리스너 설정
         playing.setOnClickListener(v -> playSelectedFiles());
@@ -235,6 +239,7 @@ public class DataLearningActivity extends AppCompatActivity {
                     stopRecording();
                     loadAudioFiles();
                     adapter.notifyDataSetChanged();
+                    updateTotalProgress();
                 }
             } else {
                 requestPermissions();
@@ -278,6 +283,14 @@ public class DataLearningActivity extends AppCompatActivity {
             txt_send.setVisibility(View.GONE);
             txt_record.setVisibility(View.VISIBLE);
         }
+        syncButtonContainers();
+    }
+
+    // 버튼을 숨기면 그 칸(버튼 + 아래 글자)도 숨겨서, 녹음하기 버튼 하나일 때 가로를 다 쓰게 한다 (#82)
+    private void syncButtonContainers() {
+        for (View button : new View[]{playing, delete_selected, submit_selected, recording}) {
+            ((View) button.getParent()).setVisibility(button.getVisibility());
+        }
     }
 
     private void playSelectedFiles() {
@@ -285,7 +298,7 @@ public class DataLearningActivity extends AppCompatActivity {
         if (!isPlaying) {
             if (selectedFiles.size() == 1) {
                 playAudio(selectedFiles.get(0));
-                txt_play.setText("재생 멈춤");
+                txt_play.setText(R.string.record_play_stop);
                 playing.setImageDrawable(getDrawable(R.drawable.stop));
             } else if (selectedFiles.size() > 1) {
                 Snackbar.make(findViewById(R.id.layout), "한 번에 하나의 파일만 재생할 수 있습니다.", Snackbar.LENGTH_SHORT).setAction("확인",new View.OnClickListener() { @Override public void onClick(View v) {}}).show();
@@ -300,11 +313,11 @@ public class DataLearningActivity extends AppCompatActivity {
     private void confirmDeleteSelectedFiles() {
         ArrayList<File> selectedFiles = adapter.getSelectedFiles();
         if (!selectedFiles.isEmpty()) {
-            new AlertDialog.Builder(this)
-                    .setTitle("삭제 확인")
-                    .setMessage(selectedFiles.size() + "개의 파일을 삭제하시겠습니까?")
-                    .setPositiveButton("삭제", (dialog, which) -> deleteSelectedFiles())
-                    .setNegativeButton("취소", null)
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.record_delete)
+                    .setMessage("녹음 " + selectedFiles.size() + "개를 지울까요?")
+                    .setPositiveButton(R.string.record_delete, (dialog, which) -> deleteSelectedFiles())
+                    .setNegativeButton(R.string.cancel, null)
                     .show();
         } else {
             Snackbar.make(findViewById(R.id.layout), "선택된 파일이 없습니다.", Snackbar.LENGTH_SHORT).setAction("확인",new View.OnClickListener() { @Override public void onClick(View v) {}}).show();
@@ -328,17 +341,17 @@ public class DataLearningActivity extends AppCompatActivity {
         if (!selectedFiles.isEmpty()) {
             long totalDuration = calculateTotalDuration(selectedFiles);
 
-            if (totalDuration < 300000) {
-                Snackbar.make(findViewById(R.id.layout), "음성 파일의 길이가 부족합니다.\n총 길이가 5분을 넘어야합니다.", Snackbar.LENGTH_SHORT).setAction("확인",new View.OnClickListener() { @Override public void onClick(View v) {}}).show();
+            if (totalDuration < MIN_TRAINING_MS) {
+                Snackbar.make(findViewById(R.id.layout), getString(R.string.record_too_short, formatKoreanDuration(MIN_TRAINING_MS - totalDuration)), Snackbar.LENGTH_LONG).setAction(R.string.ok, v -> {}).show();
                 return; // 진행 중지
             }
 
             String formattedDuration = formatDuration(totalDuration);
-            new AlertDialog.Builder(this)
-                    .setTitle("제출 확인")
-                    .setMessage("선택한 파일을 제출하시겠습니까?\n(총 길이: " + formattedDuration + ")")
-                    .setPositiveButton("제출", (dialog, which) -> submitSelectedFiles())
-                    .setNegativeButton("취소", null)
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle(getString(R.string.record_submit_title, selectedFiles.size()))
+                    .setMessage(getString(R.string.record_submit_message, formattedDuration, estimateTrainingMinutes(totalDuration)))
+                    .setPositiveButton(R.string.record_submit, (dialog, which) -> submitSelectedFiles())
+                    .setNegativeButton(R.string.cancel, null)
                     .show();
         } else {
             Snackbar.make(findViewById(R.id.layout), "선택된 파일이 없습니다.", Snackbar.LENGTH_SHORT).setAction("확인",null).show();
@@ -374,6 +387,59 @@ public class DataLearningActivity extends AppCompatActivity {
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds);
+    }
+
+    // 모은 녹음 길이를 "모은 녹음" 카드에 보여 준다: 5분까지 얼마나 남았는지 (#82)
+    private void updateTotalProgress() {
+        long total = calculateTotalDuration(audioFiles);
+        txtTotalRecorded.setText(formatShortDuration(total));
+        progressTotal.setProgress((int) Math.min(total / 1000, MIN_TRAINING_MS / 1000));
+        if (total >= MIN_TRAINING_MS) {
+            txtProgressMessage.setText(R.string.record_enough);
+        } else {
+            txtProgressMessage.setText(getString(R.string.record_need_more, formatKoreanDuration(MIN_TRAINING_MS - total)));
+        }
+        txtListHeader.setText(getString(R.string.record_list_count, audioFiles.size()));
+        txtListHeader.setVisibility(audioFiles.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    // 녹음 중에는 진행 카드 대신 읽을 글과 녹음 시간을 보여 준다
+    private void showRecordingPanel(boolean isRecordingNow) {
+        recordingPanel.setVisibility(isRecordingNow ? View.VISIBLE : View.GONE);
+        progressCard.setVisibility(isRecordingNow ? View.GONE : View.VISIBLE);
+        tipsRow.setVisibility(isRecordingNow ? View.GONE : View.VISIBLE);
+        if (isRecordingNow) {
+            showNextReadText();
+        }
+    }
+
+    private void showNextReadText() {
+        readTextIndex = (readTextIndex + 1) % readTexts.length;
+        txtReadText.setText(readTexts[readTextIndex]);
+    }
+
+    // 예상 학습 시간(분): 녹음 2분 → 3분 22초, 5분 → 5분 7초, 6분 → 6분 8초 측정값(10 epoch, Windows RTX 3060, #65)으로 맞춘 직선
+    // 학습 워커가 다른 사람 학습 중이면 더 걸린다 (화면 문구에 적음)
+    private int estimateTrainingMinutes(long recordingMs) {
+        double recordingMinutes = recordingMs / 60000.0;
+        return (int) Math.round(2 + 0.7 * recordingMinutes);
+    }
+
+    // 3분 12초 → "3:12"
+    private String formatShortDuration(long durationInMillis) {
+        int totalSeconds = (int) (durationInMillis / 1000);
+        return String.format(Locale.getDefault(), "%d:%02d", totalSeconds / 60, totalSeconds % 60);
+    }
+
+    // 108초 → "1분 48초"
+    private String formatKoreanDuration(long durationInMillis) {
+        int totalSeconds = (int) Math.ceil(durationInMillis / 1000.0);
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
+        if (minutes == 0) {
+            return seconds + "초";
+        }
+        return seconds == 0 ? minutes + "분" : minutes + "분 " + seconds + "초";
     }
 
     private void saveSelectedFilePaths(ArrayList<String> selectedFilePaths) {
@@ -420,6 +486,7 @@ public class DataLearningActivity extends AppCompatActivity {
             if (audioFile.delete()) {
                 loadAudioFiles();
                 adapter.notifyDataSetChanged();
+                updateTotalProgress();
             } else {
                 Snackbar.make(findViewById(R.id.layout), "파일 삭제에 실패했습니다.", Snackbar.LENGTH_SHORT).setAction("확인",new View.OnClickListener() { @Override public void onClick(View v) {}}).show();
             }
@@ -493,7 +560,7 @@ public class DataLearningActivity extends AppCompatActivity {
                 txt_currentTime.setVisibility(View.GONE);
                 txt_totalTime.setText("00:00");
                 txt_totalTime.setVisibility(View.GONE);
-                txt_play.setText("재생 시작");
+                txt_play.setText(R.string.record_play);
                 playing.setImageDrawable(getDrawable(R.drawable.play_arrow));
                 updateActionButtonsVisibility(selectedFiles.size());
             }
@@ -548,7 +615,6 @@ public class DataLearningActivity extends AppCompatActivity {
             isRecording = true;
 
             recordingStartTime = System.currentTimeMillis(); // 녹음 시작 시간 기록
-            txt_recordingTime.setVisibility(View.VISIBLE);
             updateRecordingTime = new Runnable() {
                 @Override
                 public void run() {
@@ -562,10 +628,10 @@ public class DataLearningActivity extends AppCompatActivity {
             recordingTimeHandler.post(updateRecordingTime); // 타이머 시작
 
             // 녹음이 성공적으로 시작되었을 때만 버튼 텍스트 변경
-            txt_record.setText("녹음 종료");
-            txt_recordingTime.setVisibility(View.VISIBLE);
+            txt_record.setText(R.string.record_stop);
             recording.setImageDrawable(getDrawable(R.drawable.stop));
-            recording.setBackground(getDrawable(R.drawable.rounded_btn_background_red));
+            recording.setBackground(getDrawable(R.drawable.bg_button_recording));
+            showRecordingPanel(true);
         } catch (IOException e) {
             e.printStackTrace();
             Snackbar.make(findViewById(R.id.layout), "녹음 시작에 실패했습니다.", Snackbar.LENGTH_SHORT).setAction("확인",new View.OnClickListener() { @Override public void onClick(View v) {}}).show();
@@ -587,10 +653,10 @@ public class DataLearningActivity extends AppCompatActivity {
                 recorder = null;
                 isRecording = false;
                 recordingTimeHandler.removeCallbacks(updateRecordingTime); // 타이머 중지
-                txt_record.setText("녹음 시작");
-                txt_recordingTime.setVisibility(View.GONE); // 녹음 시간 표시 숨기기
+                txt_record.setText(R.string.record_start);
                 recording.setImageDrawable(getDrawable(R.drawable.record));
-                recording.setBackground(getDrawable(R.drawable.rounded_btn_background));
+                recording.setBackground(getDrawable(R.drawable.bg_button_primary));
+                showRecordingPanel(false);
             }
         }
     }
@@ -737,10 +803,10 @@ public class DataLearningActivity extends AppCompatActivity {
                 break;
         }
         if (item.getItemId() == R.id.action_info) {
-            new AlertDialog.Builder(DataLearningActivity.this)
-                    .setTitle("학습 가이드라인")
+            new MaterialAlertDialogBuilder(DataLearningActivity.this)
+                    .setTitle(R.string.record_guide_title)
                     .setMessage(getString(R.string.learning_guideline))
-                    .setPositiveButton("확인", null)
+                    .setPositiveButton(R.string.ok, null)
                     .show();
         }
         return super.onOptionsItemSelected(item);
