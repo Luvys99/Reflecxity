@@ -239,7 +239,10 @@ curl -F "file=@voice.m4a" localhost:28300/users/<uuid>/recordings
 curl -X POST localhost:28300/users/<uuid>/training
 curl localhost:28300/users/<uuid>/training
 
-# 4) TTS (결과 음성 파일을 바로 받음)
+# 4) 번역 (Main이 Google 번역을 대신 부름, .env에 GOOGLE_TRANSLATE_API_KEY 필요)
+curl -X POST localhost:28300/translations -H "Content-Type: application/json" -d '{"text": "안녕하세요", "target": "en"}'
+
+# 5) TTS (결과 음성 파일을 바로 받음)
 curl -X POST localhost:28300/users/<uuid>/tts -F "tts_text=Hello, this is my voice." -o result.wav
 ```
 
