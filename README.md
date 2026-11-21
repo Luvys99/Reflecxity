@@ -259,7 +259,12 @@ tailscale funnel --https=443 off     # 닫기
 ```
 
 - 열려 있는 동안은 주소를 아는 누구나 부를 수 있고, 주소는 인증서 공개 기록으로 금방 알려집니다. **쓸 때만 열고 끝나면 닫습니다**
-- 아직 사용자 확인·요청 수 제한이 없습니다 ([#103](../../issues/103)). 번역만 하루 글자 수 상한이 있습니다 (`TRANSLATE_DAILY_CHAR_LIMIT`, [#105](../../issues/105))
+- 보호 장치 ([#103](../../issues/103), [#105](../../issues/105)). 값은 `.env` (`.env.example` 참고)
+  - 요청 수 제한: 사용자 만들기·학습 요청·번역은 IP별, 업로드·TTS는 사용자별. 넘으면 429. Funnel을 거친 요청은 Tailscale이 넘겨준 진짜 IP로 센다
+  - 번역 하루 글자 수 상한 (`TRANSLATE_DAILY_CHAR_LIMIT`)
+  - 앱 전용 문구 `APP_KEY`: 있으면 헤더 `X-App-Key`가 같은 요청만 받는다(401). 앱은 `local.properties`의 `app_key`로 보낸다. curl·Swagger로 확인할 때도 이 헤더가 필요하다 (Swagger는 Authorize 버튼)
+  - 열기 전에 `.env`에 `DOCS_ENABLED=false`를 넣고 Main을 다시 켜면 API 목록(`/docs`)이 꺼진다
+- 사용자 확인(로그인·토큰)은 없다. UUID가 비밀번호 역할이라 남의 UUID를 모르면 그 목소리는 못 쓴다
 - 앱: `android/local.properties`의 `mainapi_url`을 위 HTTPS 주소로 바꿔 빌드한 APK를 나눠 줍니다. 개발용 빌드만 에뮬레이터 주소 http를 허용하고, release 빌드는 HTTPS만 씁니다 ([#107](../../issues/107))
 - 처음 한 번은 Tailscale 관리 페이지에서 HTTPS 인증서와 Funnel을 허용해야 합니다 (명령이 허용 링크를 보여 줌)
 
