@@ -62,8 +62,21 @@ def test_대기_순서는_학습_중이면_1_그_뒤는_2다(api, test_redis):
     request_training(api, "userB")
     fake_worker_takes_next_job(test_redis)  # A 학습 시작
 
-    assert api.get("/user/userA/queue").json() == {"status": "대기열에 있습니다.", "position": 1}
+    response_a = api.get("/user/userA/queue").json()
+    assert response_a["status"] == "대기열에 있습니다." and response_a["position"] == 1
     assert api.get("/user/userB/queue").json() == {"status": "대기열에 있습니다.", "position": 2}
+
+
+def test_학습_중이면_시작한_지_지난_초를_주고_대기_중이면_주지_않는다(api, test_redis):
+    # 앱이 남은 시간 = 예상 학습 시간 - 지난 시간으로 보여 준다 (#89)
+    request_training(api, "userA")
+    request_training(api, "userB")
+    fake_worker_takes_next_job(test_redis)  # A 학습 시작
+
+    response_a = api.get("/user/userA/queue").json()
+    assert isinstance(response_a["elapsed_seconds"], int)
+    assert 0 <= response_a["elapsed_seconds"] < 5
+    assert "elapsed_seconds" not in api.get("/user/userB/queue").json()
 
 
 def test_앞_작업이_끝나면_대기_순서가_당겨진다(api, test_redis):

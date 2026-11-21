@@ -288,7 +288,7 @@ async def get_queue_status():
     "/user/{user_uuid}/queue",
     tags=["학습"],
     summary="내 대기열 위치",
-    description="학습이 대기·진행 중이면 위치를 돌려준다: 내 앞에 끝나지 않은 작업 수 + 1 (진행 중이면 1). 앱은 1을 \"생성 중\", 2 이상을 \"대기 순번 (위치 - 1)번\"으로 보여 준다. 끝났거나 요청이 없으면 \"대기열에 추가되지 않았습니다\" (#42).",
+    description="학습이 대기·진행 중이면 위치를 돌려준다: 내 앞에 끝나지 않은 작업 수 + 1 (진행 중이면 1). 앱은 1을 \"생성 중\", 2 이상을 \"대기 순번 (위치 - 1)번\"으로 보여 준다. 학습 중이면 `elapsed_seconds`(워커가 학습을 시작한 뒤 지난 초)도 준다 (#89). 끝났거나 요청이 없으면 \"대기열에 추가되지 않았습니다\" (#42).",
 )
 async def get_user_queue_info(user_uuid: str):
     job = await find_train_job(redis_client, user_uuid)
@@ -297,7 +297,13 @@ async def get_user_queue_info(user_uuid: str):
 
     position = await count_jobs_ahead(redis_client, job) + 1
     logging.info(f"사용자 {user_uuid}는 대기열에 있습니다. 위치: {position}")
-    return {"status": "대기열에 있습니다.", "position": position}
+    response = {"status": "대기열에 있습니다.", "position": position}
+    # 학습 중이면 학습을 시작한 지 지난 시간: 앱이 남은 시간을 보여 준다 (#89)
+    if job["status"] == "progress":
+        elapsed_ms = await measure_working_ms(redis_client, job)
+        if elapsed_ms is not None:
+            response["elapsed_seconds"] = elapsed_ms // 1000
+    return response
 
 # 서버 온라인 상태 확인 엔드포인트
 @app.get(
