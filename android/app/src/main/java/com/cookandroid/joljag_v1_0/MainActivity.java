@@ -84,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
     private MediaPlayer mediaPlayer;
 
     private static final String GoogleAPI_KEY = BuildConfig.GoogleAPI_KEY;
-    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL_USER;
+    private static final String MainAPI_URL_USER = BuildConfig.MainAPI_URL + "/users/";
     private static final int REQUEST_AUDIO_PERMISSION_CODE = 200;
 
     @Override

@@ -82,7 +82,7 @@ public class DataLearningActivity extends AppCompatActivity {
     private static final int REQUEST_AUDIO_PERMISSION_CODE = 200;
 
     private static final String MainAPI_URL = BuildConfig.MainAPI_URL;
-    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online/";
+    private static final String MainAPI_URL_OnlineCheck = MainAPI_URL + "/online";
 
     private boolean server_status_main = false;
     private boolean server_status_model = false;
