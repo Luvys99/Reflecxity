@@ -1,7 +1,7 @@
 import logging
 import os
 import configparser
-from typing import List
+from typing import List, Optional
 import time
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Request
 from fastapi.responses import Response
@@ -245,9 +245,9 @@ async def create_user_model(user_uuid: str):
     "/user/{user_uuid}/tts",
     tags=["TTS"],
     summary="TTS (텍스트 → 내 목소리)",
-    description="Redis에 TTS 작업(`job:{id}`)을 넣고 `stream:tts`에 번호를 넣는다. Windows의 TTS 워커가 끝 신호(`job:{id}:done`)를 줄 때까지 `BLPOP`으로 기다렸다가(최대 `TTS_WAIT_SECONDS`, 기본 90초) 결과 음성(`job:{id}:result`)을 내려준다. 빈 문장·학습이 끝나지 않은 사용자는 400, 워커 실패는 500, 시간 초과는 504. pitch를 안 보내면 `config.ini`의 기본값(3) (#38).",
+    description="Redis에 TTS 작업(`job:{id}`)을 넣고 `stream:tts`에 번호를 넣는다. Windows의 TTS 워커가 끝 신호(`job:{id}:done`)를 줄 때까지 `BLPOP`으로 기다렸다가(최대 `TTS_WAIT_SECONDS`, 기본 90초) 결과 음성(`job:{id}:result`)을 내려준다. 빈 문장·학습이 끝나지 않은 사용자는 400, 워커 실패는 500, 시간 초과는 504. pitch를 안 보내면 학습 때 잰 자동 피치, 그것도 없으면 `config.ini`의 기본값(3) (워커가 고른다, #59).",
 )
-async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: int = Form(DEFAULT_PITCH)):
+async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: Optional[int] = Form(None)):
     # 입구 검사: 다시 해도 같은 요청은 큐에 넣지 않는다
     if not tts_text.strip():
         raise HTTPException(status_code=400, detail="문장이 비어 있습니다.")
@@ -255,7 +255,7 @@ async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: int =
     if train_job is None or train_job["status"] != "success":
         raise HTTPException(status_code=400, detail="학습이 끝난 모델이 없습니다.")
 
-    job_id = await enqueue_tts_job(redis_client, user_uuid, tts_text, pitch)
+    job_id = await enqueue_tts_job(redis_client, user_uuid, tts_text, pitch, DEFAULT_PITCH)
     status, audio = await wait_for_tts_result(redis_binary_client, job_id, TTS_WAIT_SECONDS)
 
     # 실패면 결과를 받으러 가지 않는다 (예전에는 이전 문장의 음성이 나갔다, #38)

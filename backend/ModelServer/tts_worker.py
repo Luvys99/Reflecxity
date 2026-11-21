@@ -11,6 +11,7 @@ import uuid
 
 from dotenv import load_dotenv
 
+from auto_pitch import read_auto_pitch
 from job_worker import JobFailed, JobWorker, connect_redis, read_worker_number
 from tts import convert_text_to_voice, find_model_files, prepare_voice_converter
 
@@ -23,14 +24,26 @@ TTS_WORKER_GROUP = "tts-workers"
 MAX_ATTEMPTS = 3  # 처음 1번 + 재시도 2번 (edge-tts가 가끔 일시적으로 실패한다, #17 댓글)
 
 
+
+# 피치 고르기 (#59): 요청에 pitch가 있으면 그 값 → 학습 때 잰 자동 피치(auto_pitch.txt) → Main 기본값(default_pitch)
+# 고를 값이 하나도 없으면 None
+def choose_pitch(job):
+    if job.get("pitch", "") != "":
+        return job["pitch"]
+    auto_pitch = read_auto_pitch(job["user"])
+    if auto_pitch is not None:
+        return auto_pitch
+    return job.get("default_pitch")
+
+
 def run_tts_job(job):
     user_uuid = job["user"]
 
-    # 문장·pitch가 없거나 모델이 없으면 다시 해도 같으니 바로 실패
-    # pitch 기본값은 Main 설정에 있어서 Main이 작업을 넣을 때 채운다
+    # 문장이 없거나 모델이 없으면 다시 해도 같으니 바로 실패
     if not job.get("text"):
         raise JobFailed("문장 없음")
-    if "pitch" not in job:
+    pitch = choose_pitch(job)
+    if pitch is None:
         raise JobFailed("pitch 없음")
     try:
         pth_path, index_path = find_model_files(user_uuid)
@@ -42,7 +55,7 @@ def run_tts_job(job):
     os.makedirs("temptts", exist_ok=True)
     output_path = os.path.join("temptts", f"{user_uuid}_{uuid.uuid4().hex}.wav")
     try:
-        convert_text_to_voice(user_uuid, job["text"], job["pitch"], pth_path, index_path, output_path)
+        convert_text_to_voice(user_uuid, job["text"], pitch, pth_path, index_path, output_path)
         with open(output_path, "rb") as f:
             return f.read()
     finally:

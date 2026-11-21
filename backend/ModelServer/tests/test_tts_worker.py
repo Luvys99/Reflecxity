@@ -169,3 +169,35 @@ def test_최종_실패하면_결과_없이_실패_신호를_남긴다(test_redis
 
     assert done_signals(test_redis, job) == ["fail"]
     assert test_redis.get(f"{job}:result") is None
+
+
+@pytest.mark.parametrize("job_fields, auto_pitch, expected_pitch", [
+    ({"pitch": 5, "default_pitch": 3}, 7, "5"),  # 요청에 pitch가 있으면 그 값
+    ({"default_pitch": 3}, 7, 7),                # 없으면 학습 때 잰 자동 피치
+    ({"default_pitch": 3}, None, "3"),           # 자동 피치도 없으면 Main 기본값
+])
+def test_pitch는_요청_값_자동_피치_기본값_순서로_고른다(test_redis, tts_job_worker, monkeypatch, job_fields, auto_pitch, expected_pitch):
+    calls = fake_tts_results(monkeypatch, None)
+    monkeypatch.setattr(tts_worker, "read_auto_pitch", lambda user_uuid: auto_pitch)
+    job = enqueue_tts_job(test_redis, **job_fields)
+    if "pitch" not in job_fields:
+        test_redis.hdel(job, "pitch")  # Main이 pitch 없이 넣은 작업
+
+    tts_job_worker.process_next_job()
+
+    assert test_redis.hget(job, "status") == "success"
+    assert calls[0][2] == expected_pitch
+
+
+def test_고를_pitch가_하나도_없으면_바로_실패한다(test_redis, tts_job_worker, monkeypatch):
+    calls = fake_tts_results(monkeypatch, None)
+    monkeypatch.setattr(tts_worker, "read_auto_pitch", lambda user_uuid: None)
+    job = enqueue_tts_job(test_redis)
+    test_redis.hdel(job, "pitch")  # Main이 pitch 없이 넣은 작업
+
+    tts_job_worker.process_next_job()
+
+    assert test_redis.hget(job, "status") == "fail"
+    assert test_redis.hget(job, "error") == "pitch 없음"
+    assert calls == []
+
