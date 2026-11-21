@@ -105,17 +105,20 @@ public class MainActivity extends AppCompatActivity {
             startActivity(introIntent);
             finish();
             Log.d("MainActivity", "Intro 진입");
+            return; // finish()는 화면을 닫겠다는 예약일 뿐이라, 여기서 끝내지 않으면 아래에서 레이아웃 없이 툴바를 찾다가 죽는다 (#68)
         } else if (!isFirstRun && !isUserCreated && !isTermConfirm) {
             // 앱이 처음 실행된 적이 있고, UUID가 없으면서 약관 컨펌한 경우 WelcomeActivity로 이동
             Intent welcomeIntent = new Intent(MainActivity.this, WelcomeActivity.class);
             startActivity(welcomeIntent);
             finish();
             Log.d("MainActivity", "Welcome 진입");
+            return;
         } else if (!isFirstRun && !isUserCreated && isTermConfirm) {
             // 앱이 처음 실행된 적이 있고, UUID가 없으면서 약관 컨펌 한 경우 DataLearningActivity로 이동
             Intent dataLearningIntent = new Intent(MainActivity.this, DataLearningActivity.class);
             startActivity(dataLearningIntent);
             finish();
+            return;
         } else {
             // 앱이 처음 실행된 적이 있고, UUID가 존재하는 경우 메인 화면을 보여줍니다
             setContentView(R.layout.activity_main);
