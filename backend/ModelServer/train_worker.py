@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from fastapi import HTTPException
 
 from job_worker import JobFailed, JobWorker, connect_redis, read_worker_number
-from training import create_model_async, prepare_training, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES
+from training import train_voice_model, prepare_training, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES
 
 # 학습 코드가 user/, logs/, rvc_cli.py를 이 폴더 기준으로 찾는다
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -35,7 +35,7 @@ def run_train_job(job):
         raise JobFailed("녹음 파일 없음")
 
     try:
-        asyncio.run(create_model_async(user_uuid, dataset_path, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES, voice_file_names))
+        asyncio.run(train_voice_model(user_uuid, dataset_path, DEFAULT_SAMPLE_RATE, DEFAULT_CPU_CORES, voice_file_names))
     except HTTPException as e:
         # 녹음이 짧아 조각이 10개 이하: 다시 해도 같으니 바로 실패
         raise JobFailed(e.detail)

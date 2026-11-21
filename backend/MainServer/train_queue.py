@@ -84,7 +84,7 @@ async def count_jobs_ahead(redis_client, job):
     return ahead
 
 
-async def working_ms(redis_client, job):
+async def measure_working_ms(redis_client, job):
     # 워커가 이 작업을 꺼낸 뒤 지난 시간(ms). Redis가 직접 센다 (두 컴퓨터의 시계 차이와 상관없음)
     # 재시도로 다시 꺼내면 0부터 다시 센다. 꺼낸 워커가 없으면 None
     pending = await redis_client.xpending_range(TRAIN_STREAM, TRAIN_WORKER_GROUP, job["message_id"], job["message_id"], 1)
