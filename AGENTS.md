@@ -46,10 +46,11 @@
   - 학습은 `train_queue.py`, TTS는 `tts_queue.py`가 Redis에 작업을 넣고 결과를 읽습니다 (Windows 워커가 처리). 그 밖의 Model 호출(업로드, 파일, 사용자 삭제)은 HTTP
 - `backend/ModelServer`: 프로젝트 코드는 아래 파일뿐입니다.
   - `main.py`(FastAPI, 48000. 녹음 파일 올리기·목록·삭제, 사용자 삭제만. 학습·TTS는 HTTP 주소 없이 워커가 Redis로 받는다, #47)
-  - `training.py`(학습 파이프라인), `tts.py`(모델 파일 찾기, TTS 실행), `command.py`(하위 프로세스 실행기, 학습·TTS 공용)
+  - `training.py`(학습 파이프라인, 학습 횟수 `TRAIN_EPOCHS`), `tts.py`(모델 파일 찾기, TTS 실행), `command.py`(하위 프로세스 실행기, 학습·TTS 공용)
+  - `auto_pitch.py`(자동 피치, #59): 학습 끝에 녹음 높이(F0)를 재서 `logs/{uuid}/auto_pitch.txt`에 저장, TTS 워커가 읽는다. 기준값은 `tts.TTS_VOICE_F0_HZ`(기계 음성을 바꾸면 실제 변환으로 다시 맞춘다)
   - `job_worker.py`(워커 공통: Redis 스트림에서 꺼내기, `job:{id}` 기록, 재시도. 다시 해도 같은 실패는 `JobFailed`). 워커 이름은 `컴퓨터이름-번호`(`--number`, 기본 1). 한 컴퓨터에 같은 종류의 워커를 여러 개 켤 때는 번호를 다르게, 다시 켤 때는 같은 번호로 (#51)
   - `train_worker.py`(학습 워커, 서버와 별개 프로세스. 학습 한 건만 하고 나머지는 `job_worker.py`, 학습 파이프라인은 `training.py`를 같이 씀)
-  - `tts_worker.py`(TTS 워커, `stream:tts`. TTS 한 건만 하고 나머지는 `job_worker.py`, TTS는 `tts.py`를 같이 씀). 변환은 새 프로세스 없이 워커 안에서 `rvc_cli.run_tts_script`를 부른다(`tts.convert_text_to_voice`, #49). 워커는 켜질 때 작업을 받기 전에 `tts.prepare_voice_converter()`로 VoiceConverter·HuBERT를 미리 올린다(#54)
+  - `tts_worker.py`(TTS 워커, `stream:tts`. TTS 한 건만 하고 나머지는 `job_worker.py`, TTS는 `tts.py`를 같이 씀). 변환은 새 프로세스 없이 워커 안에서 `rvc_cli.run_tts_script`를 부른다(`tts.convert_text_to_voice`, #49). 워커는 켜질 때 작업을 받기 전에 `tts.prepare_voice_converter()`로 VoiceConverter·HuBERT를 미리 올린다(#54). 피치는 요청 값 → 자동 피치 → `default_pitch` 순서(`choose_pitch`, #59)
   - `tests/`(pytest. 실행 명령은 위 "명령어")
   `rvc_cli.py`, `uvr_cli.py`, `rvc/`, `uvr/`, `docs/`, `assets/`는 외부 rvc-cli 코드라 고치지 않습니다. 꼭 필요하면 먼저 물어봐 주세요.
 - `rvc/configs/*.json`은 실행할 때마다 바뀝니다. 커밋하지 않습니다.
@@ -61,7 +62,7 @@ Main(`MainServer/train_queue.py`)과 워커(`ModelServer/job_worker.py`, `*_work
 | --- | --- | --- | --- |
 | `stream:train` / 그룹 `train-workers` | Stream | Main(`XADD`) → 학습 워커 | 한 줄에 `job_id` |
 | `stream:tts` / 그룹 `tts-workers` | Stream | Main(`XADD`) → TTS 워커 | 한 줄에 `job_id` |
-| `job:{job_id}` | Hash | Main이 만들고 워커가 상태를 바꿈 | `type`, `user`, `status`, `attempts`, `error`, `message_id`, 시각들 (TTS는 `text`, `pitch`) |
+| `job:{job_id}` | Hash | Main이 만들고 워커가 상태를 바꿈 | `type`, `user`, `status`, `attempts`, `error`, `message_id`, 시각들 (TTS는 `text`, `default_pitch`, `pitch`는 요청에 있을 때만) |
 | `user:{uuid}:train` | String | Main | 그 사용자의 최근 학습 `job_id` |
 | `job:{job_id}:result` | String (bytes) | 워커 → Main(`GETDEL`) | 작업 결과 (TTS는 wav). Main이 가져가면서 지움, 못 가져가면 10분 뒤 자동 삭제 |
 | `job:{job_id}:done` | List | 워커 → Main(`BLPOP`) | 최종 `success` / `fail` 신호 (재시도 중에는 없음). 10분 뒤 자동 삭제 |
