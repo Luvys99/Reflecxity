@@ -103,7 +103,7 @@ def test_완료_확인은_상태에_따라_예전과_같은_응답을_준다(api
 def test_워커가_꺼낸_뒤_시간이_초과되면_실패로_응답한다(api, test_redis, monkeypatch):
     request_training(api, "userA")
     fake_worker_takes_next_job(test_redis)
-    monkeypatch.setattr(main, "MODEL_GENERATION_TIMEOUT", 0)
+    monkeypatch.setattr(main, "MODEL_GENERATION_TIMEOUT_SECONDS", 0)
 
     response = api.get("/user/userA/modelcheck")
 

@@ -33,7 +33,7 @@ def fake_training_results(monkeypatch, *results):
         if result is not None:
             raise result
 
-    monkeypatch.setattr(train_worker, "create_model_async", fake_train_model)
+    monkeypatch.setattr(train_worker, "train_voice_model", fake_train_model)
     return calls
 
 

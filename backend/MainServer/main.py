@@ -10,10 +10,10 @@ import requests
 from dotenv import load_dotenv
 
 from db_manager import DBManager
-from utils import allowed_file, generate_uuid
+from utils import is_allowed_file, generate_uuid
 from train_queue import (
     connect_redis, create_group_if_missing, enqueue_train_job, find_train_job,
-    count_jobs_ahead, working_ms, count_train_jobs_by_status,
+    count_jobs_ahead, measure_working_ms, count_train_jobs_by_status,
 )
 from tts_queue import enqueue_tts_job, wait_for_tts_result
 
@@ -60,7 +60,7 @@ db_manager.create_table()
 app = FastAPI(swagger_ui_parameters={"displayRequestDuration": True})
 
 @app.on_event("startup")
-async def connect_train_queue():
+async def connect_redis_queues():
     global redis_client, redis_binary_client
     redis_client = connect_redis()
     redis_binary_client = connect_redis(decode_responses=False)
@@ -79,7 +79,7 @@ MODEL_SERVER_API_URL = config.get('MODEL_SERVER', 'api_url')
 DEFAULT_PITCH = int(config.get('TTS', 'default_pitch'))
 # 학습 시간 초과 (초). 워커가 작업을 꺼낸 뒤 이 시간이 지나도 안 끝나면 실패로 응답한다 (워커가 죽고 다시 안 켜진 경우)
 # 기본 10분: 10분 녹음 학습이 약 4분 10초, 재시도 1번까지 하면 약 8~9분 (Windows RTX 3060). 원래 값은 6시간이었다 (#11, #42)
-MODEL_GENERATION_TIMEOUT = int(os.environ.get("MODEL_GENERATION_TIMEOUT", 600))
+MODEL_GENERATION_TIMEOUT_SECONDS = int(os.environ.get("MODEL_GENERATION_TIMEOUT", 600))
 # TTS 결과를 기다리는 최대 시간 (초). 워커 시도 3번 × 약 15~20초에 여유를 둔 값 (#38)
 TTS_WAIT_SECONDS = int(os.environ.get("TTS_WAIT_SECONDS", 90))
 
@@ -146,7 +146,7 @@ def delete_user(user_uuid: str):
     description="확장자를 검사하고(m4a, ogg, wav만, 그 밖은 400) Model Server의 `POST /user/{user_uuid}/upload`로 그대로 전달한다. 파일은 Model Server 디스크에만 저장되고 DB에는 기록하지 않는다.",
 )
 async def upload_file(user_uuid: str, file: UploadFile = File(...)):
-    if not allowed_file(file.filename, ALLOWED_EXTENSIONS):
+    if not is_allowed_file(file.filename, ALLOWED_EXTENSIONS):
         logging.warning(f"허용되지 않은 파일 형식: {file.filename}")
         raise HTTPException(status_code=400, detail="허용되지 않은 파일 형식")
 
@@ -206,7 +206,7 @@ async def delete_file(user_uuid: str, filename: str):
     summary="학습 완료 확인",
     description="작업 정보(Redis `job:{id}`)의 상태로 답한다. success → \"모델 파일 존재\", fail → 500, 대기·진행 중(또는 학습 요청 없음) → \"모델 파일 없음\". 워커가 꺼낸 뒤 `MODEL_GENERATION_TIMEOUT`(기본 10분)이 지나도 안 끝나면 500 (#42).",
 )
-async def model_check(user_uuid: str):
+async def check_model(user_uuid: str):
     job = await find_train_job(redis_client, user_uuid)
     if job is None or job["status"] == "queued":
         return {"message": "모델 파일 없음"}
@@ -218,8 +218,8 @@ async def model_check(user_uuid: str):
         raise HTTPException(status_code=500, detail="모델 생성 실패")
 
     # progress: 워커가 너무 오래 쥐고 있으면 (죽고 다시 안 켜짐) 실패로 응답한다. 작업 정보는 바꾸지 않는다
-    elapsed_ms = await working_ms(redis_client, job)
-    if elapsed_ms is not None and elapsed_ms >= MODEL_GENERATION_TIMEOUT * 1000:
+    elapsed_ms = await measure_working_ms(redis_client, job)
+    if elapsed_ms is not None and elapsed_ms >= MODEL_GENERATION_TIMEOUT_SECONDS * 1000:
         logging.error(f"모델 생성 시간 초과: {user_uuid}: {elapsed_ms / 1000:.0f}초")
         raise HTTPException(status_code=500, detail="모델 생성 시간 초과")
     return {"message": "모델 파일 없음"}
@@ -278,7 +278,7 @@ async def synthesize_tts(user_uuid: str, tts_text: str = Form(...), pitch: int =
     summary="전체 대기열 크기",
     description="학습 작업 중 대기(`queue_size`)와 진행(`active_tasks`) 수 (Redis 기준, #42).",
 )
-async def queue_status():
+async def get_queue_status():
     counts = await count_train_jobs_by_status(redis_client)
     logging.info(f"대기열 크기: {counts['queued']}, 진행 중: {counts['progress']}")
     return {"queue_size": counts["queued"], "active_tasks": counts["progress"]}

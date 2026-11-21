@@ -32,7 +32,7 @@ def read_worker_number():
     return parser.parse_args().number
 
 
-def now_text():
+def format_now():
     return time.strftime("%Y-%m-%d %H:%M:%S")
 
 
@@ -65,7 +65,7 @@ class JobWorker:
 
     def mark_job_failed(self, message_id, job_key, reason):
         # 실패로 기록하고 목록에서 끝난 것으로 처리한다 (다시 꺼내지 않는다)
-        self.redis_client.hset(job_key, mapping={"status": "fail", "error": reason, "finished_at": now_text()})
+        self.redis_client.hset(job_key, mapping={"status": "fail", "error": reason, "finished_at": format_now()})
         self.redis_client.xack(self.stream, self.group, message_id)
         self.signal_job_done(job_key, "fail")
         print(f"[{self.worker_name}] {job_key} 실패: {reason}")
@@ -85,7 +85,7 @@ class JobWorker:
             return
 
         # 2) 작업 실행
-        self.redis_client.hset(job_key, mapping={"status": "progress", "worker": self.worker_name, "started_at": now_text()})
+        self.redis_client.hset(job_key, mapping={"status": "progress", "worker": self.worker_name, "started_at": format_now()})
         print(f"[{self.worker_name}] {job_key} 시작 ({attempts}번째 시도)")
         try:
             result = self.run_job(job)
@@ -102,7 +102,7 @@ class JobWorker:
         # 3) 성공: 결과가 있으면 먼저 저장하고 신호를 보낸다 (신호를 받은 쪽이 바로 결과를 가져갈 수 있게)
         if result is not None:
             self.redis_client.set(f"{job_key}:result", result, ex=RESULT_TTL_SECONDS)
-        self.redis_client.hset(job_key, mapping={"status": "success", "error": "", "finished_at": now_text()})
+        self.redis_client.hset(job_key, mapping={"status": "success", "error": "", "finished_at": format_now()})
         self.redis_client.xack(self.stream, self.group, message_id)  # 끝났다고 알린다 → PEL에서 빠진다
         self.signal_job_done(job_key, "success")
         print(f"[{self.worker_name}] {job_key} 성공")
