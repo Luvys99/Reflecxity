@@ -1,4 +1,4 @@
-# 학습 파이프라인: 녹음 합치기 → UVR → preprocess → extract → train → index → 결과 확인
+# 학습 파이프라인: 녹음 합치기 → UVR → preprocess → extract → train → index → 결과 확인 → 자동 피치
 # 결과(성공 / 실패) 기록은 부르는 쪽이 한다 (학습 워커 → Redis)
 import os
 import sys
@@ -11,6 +11,7 @@ import numpy as np
 import soundfile as sf
 from fastapi import HTTPException
 
+from auto_pitch import save_auto_pitch
 from command import run_command
 
 executor = ThreadPoolExecutor()
@@ -172,3 +173,14 @@ async def train_voice_model(user_uuid, dataset_path, sample_rate, cpu_cores, voi
         raise FileNotFoundError(
             f"No 'added_*.index' file found in {model_dir}"
         )
+
+    # --- 5. 자동 피치 ---
+    # 녹음 높이를 재서 TTS 피치를 저장한다 (#59). 실패해도 학습은 성공으로 둔다 (TTS는 기본 피치를 쓴다)
+    try:
+        voice_f0_hz, pitch = await asyncio.get_event_loop().run_in_executor(executor, save_auto_pitch, user_uuid, dataset_path)
+        if pitch is None:
+            print(f"[Model {user_uuid}] 자동 피치: 녹음 높이를 잴 수 없어 기본 피치를 쓴다")
+        else:
+            print(f"[Model {user_uuid}] 자동 피치: 녹음 {voice_f0_hz:.0f}Hz → 피치 {pitch:+d}")
+    except Exception as e:
+        print(f"[Model {user_uuid}] 자동 피치 실패, 기본 피치를 쓴다: {e}")

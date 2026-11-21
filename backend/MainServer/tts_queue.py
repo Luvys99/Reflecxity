@@ -7,18 +7,22 @@ import uuid
 TTS_STREAM = "stream:tts"
 
 
-async def enqueue_tts_job(redis_client, user_uuid, text, pitch):
+async def enqueue_tts_job(redis_client, user_uuid, text, pitch, default_pitch):
     # 작업 정보(queued)를 만들고 목록에 작업 ID를 넣는다
+    # pitch가 None이면 넣지 않는다: 워커가 자동 피치 → default_pitch 순서로 고른다 (#59)
     job_id = str(uuid.uuid4())
-    await redis_client.hset(f"job:{job_id}", mapping={
+    job = {
         "type": "tts",
         "user": user_uuid,
         "text": text,
-        "pitch": pitch,
+        "default_pitch": default_pitch,
         "status": "queued",
         "attempts": 0,
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-    })
+    }
+    if pitch is not None:
+        job["pitch"] = pitch
+    await redis_client.hset(f"job:{job_id}", mapping=job)
     await redis_client.xadd(TTS_STREAM, {"job_id": job_id})
     return job_id
 

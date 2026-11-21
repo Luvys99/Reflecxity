@@ -61,13 +61,15 @@ def test_워커가_성공하면_결과_음성을_돌려주고_Redis에서_지운
     assert test_redis.get(f"job:{taken['job_id']}:result") is None  # 가져가면서 지웠다
 
 
-def test_pitch를_안_보내면_기본값으로_넣는다(api, test_redis, trained_user):
+def test_pitch를_안_보내면_pitch_없이_기본값만_넣어_워커가_고르게_한다(api, test_redis, trained_user):
+    # 워커가 자동 피치 → 기본값 순서로 고른다 (#59)
     worker, taken = start_fake_tts_worker(test_redis, "success")
 
     request_tts(api, trained_user)
     worker.join()
 
-    assert taken["pitch"] == str(main.DEFAULT_PITCH)
+    assert "pitch" not in taken
+    assert taken["default_pitch"] == str(main.DEFAULT_PITCH)
 
 
 def test_워커가_실패하면_결과가_남아_있어도_돌려주지_않고_500으로_답한다(api, test_redis, trained_user):
