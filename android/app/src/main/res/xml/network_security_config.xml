@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 배포용: http(암호화 안 됨)는 막고 HTTPS만 쓴다 (#107). 개발용 빌드는 src/debug의 같은 이름 파일이 대신 쓰인다 -->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">100.64.11.2</domain>
-        <!-- 개발용: 에뮬레이터에서 본 Mac(Main 서버). 실제 배포는 HTTPS로 바꾸고 http 예외를 두지 않는다 (#70) -->
-        <domain includeSubdomains="false">10.0.2.2</domain>
-    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
 </network-security-config>
