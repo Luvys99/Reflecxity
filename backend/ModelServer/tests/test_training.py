@@ -3,6 +3,7 @@
 import asyncio
 
 import numpy as np
+import pytest
 import soundfile as sf
 
 import training
@@ -41,3 +42,16 @@ def test_샘플레이트가_다른_녹음은_첫_녹음에_맞춰_합친다(tmp_
     combined_audio, sample_rate = sf.read(combined_path)
     assert sample_rate == 44100
     assert len(combined_audio) == 2 * 44100
+
+
+def test_합치다_실패하면_에러를_올리고_녹음을_지우지_않는다(tmp_path):
+    # 예전에는 print만 하고 None을 돌려줘서 UVR이 파일 없이 실행됐다 (#111)
+    write_tone(tmp_path / "1.wav", 440)
+    (tmp_path / "2.wav").write_bytes(b"not audio")
+
+    with pytest.raises(Exception):
+        asyncio.run(training.combine_audio("test-user", str(tmp_path), ["1.wav", "2.wav"]))
+
+    # 다시 시도할 수 있게 녹음은 그대로 남는다
+    assert (tmp_path / "1.wav").exists()
+    assert (tmp_path / "2.wav").exists()
