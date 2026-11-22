@@ -36,19 +36,20 @@ def prepare_training(user_uuid):
     ]
     return dataset_path, voice_file_names
 
-# 백그라운드 작업 함수 생성
+# 녹음이 여러 개면 원래 음질 그대로 하나로 합친다 (첫 녹음의 샘플레이트에 맞춘다, #74)
+# 학습 샘플레이트(40,000Hz)로는 UVR과 preprocess가 맞추므로 여기서 낮추지 않는다
 async def combine_audio(user_uuid, dataset_path, voice_file_names):
-    sample_rate = 22050
+    sample_rate = None  # None이면 첫 녹음을 원래 샘플레이트로 읽는다
     combined_audio = []
     try:
         if len(voice_file_names) != 1:
             for file_name in voice_file_names:
                 # librosa.load를 비동기적으로 실행 (익명 함수를 사용하여 sr 인수 전달)
-                audio = await asyncio.get_event_loop().run_in_executor(
+                audio, sample_rate = await asyncio.get_event_loop().run_in_executor(
                     executor,
                     lambda: librosa.load(os.path.join(dataset_path, file_name), sr=sample_rate)
                 )
-                combined_audio.append(audio[0])
+                combined_audio.append(audio)
             combined_audio = np.concatenate(combined_audio)
             voice_file = os.path.join(dataset_path, "combined.wav")
 
