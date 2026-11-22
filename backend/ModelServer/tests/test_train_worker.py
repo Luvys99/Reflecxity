@@ -1,5 +1,9 @@
 # train_worker.py가 지켜야 할 규칙을 실제 Redis(테스트용 DB 15번, conftest.py)로 확인한다. 학습은 가짜 함수로 바꾼다
 # 실행: cd backend/ModelServer && .venv/bin/python -m pytest tests  (Mac Redis가 켜져 있어야 함)
+import asyncio
+import threading
+import time
+
 import pytest
 from fastapi import HTTPException
 
@@ -171,3 +175,71 @@ def test_다른_번호의_워커는_남이_못_끝낸_작업을_가져가지_않
     assert test_redis.hget(working, "status") == "queued"  # 2번은 손대지 않았다
     pending = test_redis.xpending_range(train_worker.TRAIN_STREAM, train_worker.TRAIN_WORKER_GROUP, "-", "+", 10)
     assert [entry["consumer"] for entry in pending] == [train_job_worker.worker_name]
+
+
+def pending_owners(test_redis):
+    pending = test_redis.xpending_range(train_worker.TRAIN_STREAM, train_worker.TRAIN_WORKER_GROUP, "-", "+", 10)
+    return [entry["consumer"] for entry in pending]
+
+
+def test_죽은_워커의_작업은_기준_시간이_지나면_다른_워커가_가져가_끝낸다(test_redis, train_job_worker, monkeypatch):
+    # 1번 워커가 꺼낸 뒤 죽었다 (다시 켜지지 않음). 기준 시간을 0.2초로 줄여 확인한다 (실제는 2분, #48)
+    fake_training_results(monkeypatch, None)
+    job = enqueue_train_job(test_redis)
+    test_redis.xreadgroup(train_worker.TRAIN_WORKER_GROUP, train_job_worker.worker_name, {train_worker.TRAIN_STREAM: ">"}, count=1)
+    test_redis.hincrby(job, "attempts", 1)  # 죽은 워커가 1번째 시도를 시작했었다
+    second_worker = train_worker.create_train_worker(test_redis, 2)
+    second_worker.wait_for_job_ms = 100
+    second_worker.reclaim_idle_ms = 200
+    time.sleep(0.3)
+
+    second_worker.process_next_job()
+
+    assert test_redis.hget(job, "status") == "success"
+    assert test_redis.hget(job, "worker") == second_worker.worker_name
+    assert test_redis.hget(job, "attempts") == "2"
+    assert count_unfinished_jobs(test_redis) == 0
+
+
+def test_기준_시간이_안_지난_작업은_가져가지_않는다(test_redis, train_job_worker, monkeypatch):
+    calls = fake_training_results(monkeypatch, None)
+    job = enqueue_train_job(test_redis)
+    test_redis.xreadgroup(train_worker.TRAIN_WORKER_GROUP, train_job_worker.worker_name, {train_worker.TRAIN_STREAM: ">"}, count=1)
+    second_worker = train_worker.create_train_worker(test_redis, 2)
+    second_worker.wait_for_job_ms = 100
+
+    second_worker.process_next_job()  # 기준은 실제 값 2분
+
+    assert calls == []
+    assert test_redis.hget(job, "status") == "queued"
+    assert pending_owners(test_redis) == [train_job_worker.worker_name]
+
+
+def test_학습_중에는_살아_있다고_알려서_다른_워커가_가져가지_않는다(test_redis, train_job_worker, monkeypatch):
+    # 1번 워커의 학습(0.8초)이 기준 시간(0.3초)보다 길다. 0.1초마다 알리므로 2번 워커는 가져가면 안 된다
+    async def slow_training(*args):
+        await asyncio.sleep(0.8)
+
+    monkeypatch.setattr(train_worker, "train_voice_model", slow_training)
+    job = enqueue_train_job(test_redis)
+    train_job_worker.heartbeat_seconds = 0.1
+    second_worker = train_worker.create_train_worker(test_redis, 2)
+    second_worker.wait_for_job_ms = 100
+    second_worker.reclaim_idle_ms = 300
+
+    first = threading.Thread(target=train_job_worker.process_next_job)
+    first.start()
+    time.sleep(0.5)  # 1번이 학습한 지 0.5초: 알리지 않았다면 기준 0.3초를 넘었다
+    second_worker.process_next_job()
+    first.join()
+
+    assert test_redis.hget(job, "status") == "success"
+    assert test_redis.hget(job, "worker") == train_job_worker.worker_name
+    assert test_redis.hget(job, "attempts") == "1"
+
+
+def test_TTS_워커도_멈춘_작업을_되찾는다():
+    import tts_worker
+
+    assert tts_worker.create_tts_worker(None).reclaim_idle_ms == 60_000
+    assert tts_worker.create_tts_worker(None).heartbeat_seconds is None

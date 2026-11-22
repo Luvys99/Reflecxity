@@ -22,6 +22,8 @@ load_dotenv()
 TTS_STREAM = "stream:tts"
 TTS_WORKER_GROUP = "tts-workers"
 MAX_ATTEMPTS = 3  # 처음 1번 + 재시도 2번 (edge-tts가 가끔 일시적으로 실패한다, #17 댓글)
+# TTS는 몇 초면 끝나므로 살아 있다는 알림 없이, 60초 넘게 소식 없는 작업은 다른 워커가 가져간다 (#48)
+RECLAIM_IDLE_MS = 60_000
 
 
 
@@ -64,7 +66,8 @@ def run_tts_job(job):
 
 
 def create_tts_worker(redis_client, worker_number=1):
-    return JobWorker(redis_client, TTS_STREAM, TTS_WORKER_GROUP, MAX_ATTEMPTS, run_tts_job, worker_number)
+    return JobWorker(redis_client, TTS_STREAM, TTS_WORKER_GROUP, MAX_ATTEMPTS, run_tts_job, worker_number,
+                     reclaim_idle_ms=RECLAIM_IDLE_MS)
 
 
 if __name__ == "__main__":

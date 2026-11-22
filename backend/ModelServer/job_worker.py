@@ -3,6 +3,7 @@
 import argparse
 import os
 import socket
+import threading
 import time
 
 import redis
@@ -37,7 +38,8 @@ def format_now():
 
 
 class JobWorker:
-    def __init__(self, redis_client, stream, group, max_attempts, run_job, worker_number=1, wait_for_job_ms=5_000):
+    def __init__(self, redis_client, stream, group, max_attempts, run_job, worker_number=1, wait_for_job_ms=5_000,
+                 reclaim_idle_ms=None, heartbeat_seconds=None):
         self.redis_client = redis_client
         self.stream = stream                    # 할 일 목록 (한 줄에 job_id 하나)
         self.group = group                      # 그룹으로 읽어야 Redis가 "누가 꺼냈고 아직 안 끝냈는지"(PEL)를 기억한다
@@ -47,6 +49,11 @@ class JobWorker:
         # 워커 이름 = 컴퓨터 이름-번호. Redis는 이 이름으로 "누가 꺼냈고 아직 안 끝냈는지"(PEL)를 기억한다
         # 한 컴퓨터의 워커끼리 이름이 같으면 서로의 PEL을 자기 것으로 꺼내 같은 작업을 두 번 한다 (#51)
         self.worker_name = f"{socket.gethostname()}-{worker_number}"
+        # 죽은 워커의 작업 되찾기 (#48). 꺼낸 뒤 이 시간(ms) 넘게 소식이 없는 남의 작업을 가져온다. None이면 안 한다
+        self.reclaim_idle_ms = reclaim_idle_ms
+        # 작업하는 동안 이 간격(초)마다 "아직 하는 중"이라고 알린다 (XCLAIM으로 멈춘 시간을 0으로). None이면 안 한다
+        # 작업이 reclaim_idle_ms보다 오래 걸리면 꼭 켜야 한다. 안 그러면 살아 있는 작업을 다른 워커가 가져가 두 번 한다
+        self.heartbeat_seconds = heartbeat_seconds
 
     def create_group_if_missing(self):
         # 그룹이 없으면 만든다 (mkstream: 스트림이 없으면 같이 만든다). 이미 있으면 넘어간다
@@ -70,6 +77,24 @@ class JobWorker:
         self.signal_job_done(job_key, "fail")
         print(f"[{self.worker_name}] {job_key} 실패: {reason}")
 
+    def send_heartbeats(self, message_id, stop):
+        # stop이 켜질 때까지(작업이 끝날 때까지) heartbeat_seconds마다 내 작업의 멈춘 시간을 0으로 만든다
+        # justid: 꺼낸 횟수(delivery count)는 늘리지 않는다
+        while not stop.wait(self.heartbeat_seconds):
+            self.redis_client.xclaim(self.stream, self.group, self.worker_name, 0, [message_id], justid=True)
+
+    def run_job_with_heartbeat(self, message_id, job):
+        if self.heartbeat_seconds is None:
+            return self.run_job(job)
+        stop = threading.Event()
+        heartbeat = threading.Thread(target=self.send_heartbeats, args=(message_id, stop), daemon=True)
+        heartbeat.start()
+        try:
+            return self.run_job(job)
+        finally:
+            stop.set()
+            heartbeat.join()
+
     def process_job(self, message_id, message):
         job_key = f"job:{message['job_id']}"
         job = self.redis_client.hgetall(job_key)
@@ -88,7 +113,7 @@ class JobWorker:
         self.redis_client.hset(job_key, mapping={"status": "progress", "worker": self.worker_name, "started_at": format_now()})
         print(f"[{self.worker_name}] {job_key} 시작 ({attempts}번째 시도)")
         try:
-            result = self.run_job(job)
+            result = self.run_job_with_heartbeat(message_id, job)
         except JobFailed as e:
             # 다시 해도 같은 실패: 바로 실패로 끝낸다
             self.mark_job_failed(message_id, job_key, str(e))
@@ -111,12 +136,27 @@ class JobWorker:
         # 1) 내가 꺼냈지만 끝내지 못한 작업부터 (작업 중 꺼졌거나, 원인 모를 에러로 재시도할 것)
         #    "0" = 내 PEL을 처음부터
         result = self.redis_client.xreadgroup(self.group, self.worker_name, {self.stream: "0"}, count=1)
-        if not result or not result[0][1]:
-            # 2) 없으면 새 작업을 기다린다 (">" = 아직 아무에게도 안 준 것)
-            result = self.redis_client.xreadgroup(self.group, self.worker_name, {self.stream: ">"}, count=1, block=self.wait_for_job_ms)
+        if result and result[0][1]:
+            self.process_messages(result[0][1])
+            return
+
+        # 2) 죽은 워커가 쥐고 있던 작업 (reclaim_idle_ms 넘게 소식 없음 → 내 것으로 가져온다, #48)
+        #    시도 횟수는 process_job에서 1 늘어난다
+        if self.reclaim_idle_ms is not None:
+            _, claimed, _ = self.redis_client.xautoclaim(self.stream, self.group, self.worker_name, self.reclaim_idle_ms, "0-0", count=1)
+            if claimed:
+                print(f"[{self.worker_name}] 멈춘 작업 되찾음: {claimed[0][0]}")
+                self.process_messages(claimed)
+                return
+
+        # 3) 없으면 새 작업을 기다린다 (">" = 아직 아무에게도 안 준 것)
+        result = self.redis_client.xreadgroup(self.group, self.worker_name, {self.stream: ">"}, count=1, block=self.wait_for_job_ms)
         for _, messages in result:
-            for message_id, message in messages:
-                self.process_job(message_id, message)
+            self.process_messages(messages)
+
+    def process_messages(self, messages):
+        for message_id, message in messages:
+            self.process_job(message_id, message)
 
     def run_forever(self):
         self.create_group_if_missing()
