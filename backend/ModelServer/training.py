@@ -38,35 +38,33 @@ def prepare_training(user_uuid):
 
 # 녹음이 여러 개면 원래 음질 그대로 하나로 합친다 (첫 녹음의 샘플레이트에 맞춘다, #74)
 # 학습 샘플레이트(40,000Hz)로는 UVR과 preprocess가 맞추므로 여기서 낮추지 않는다
+# 합치다 실패하면 에러를 그대로 올린다 → 학습 워커가 원인을 job:{id}의 error에 남긴다 (#111)
 async def combine_audio(user_uuid, dataset_path, voice_file_names):
     sample_rate = None  # None이면 첫 녹음을 원래 샘플레이트로 읽는다
     combined_audio = []
-    try:
-        if len(voice_file_names) != 1:
-            for file_name in voice_file_names:
-                # librosa.load를 비동기적으로 실행 (익명 함수를 사용하여 sr 인수 전달)
-                audio, sample_rate = await asyncio.get_event_loop().run_in_executor(
-                    executor,
-                    lambda: librosa.load(os.path.join(dataset_path, file_name), sr=sample_rate)
-                )
-                combined_audio.append(audio)
-            combined_audio = np.concatenate(combined_audio)
-            voice_file = os.path.join(dataset_path, "combined.wav")
-
-            # sf.write를 비동기적으로 실행
-            await asyncio.get_event_loop().run_in_executor(
-                executor, sf.write, voice_file, combined_audio, sample_rate
+    if len(voice_file_names) != 1:
+        for file_name in voice_file_names:
+            # librosa.load를 비동기적으로 실행 (익명 함수를 사용하여 sr 인수 전달)
+            audio, sample_rate = await asyncio.get_event_loop().run_in_executor(
+                executor,
+                lambda: librosa.load(os.path.join(dataset_path, file_name), sr=sample_rate)
             )
+            combined_audio.append(audio)
+        combined_audio = np.concatenate(combined_audio)
+        voice_file = os.path.join(dataset_path, "combined.wav")
 
-            for i in range(len(voice_file_names)):
-                os.remove(os.path.join(dataset_path, voice_file_names[i]))
-            print(f"[Model {user_uuid}] 음성 파일 병합 완료")
-            return voice_file
-        else:
-            print("오디오 파일이 하나만 존재합니다. 기존 방식으로 처리됩니다.")
-            return os.path.join(dataset_path, voice_file_names[0])
-    except Exception as e:
-        print(f"[Model {user_uuid}] 음성 파일 병합 중 오류 발생: {e}")
+        # sf.write를 비동기적으로 실행
+        await asyncio.get_event_loop().run_in_executor(
+            executor, sf.write, voice_file, combined_audio, sample_rate
+        )
+
+        for i in range(len(voice_file_names)):
+            os.remove(os.path.join(dataset_path, voice_file_names[i]))
+        print(f"[Model {user_uuid}] 음성 파일 병합 완료")
+        return voice_file
+    else:
+        print("오디오 파일이 하나만 존재합니다. 기존 방식으로 처리됩니다.")
+        return os.path.join(dataset_path, voice_file_names[0])
 
 # 비동기 모델 생성 작업 (모델 서버에서 비동기 처리)
 async def train_voice_model(user_uuid, dataset_path, sample_rate, cpu_cores, voice_file_names):
