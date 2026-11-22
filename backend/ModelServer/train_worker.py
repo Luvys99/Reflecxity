@@ -21,6 +21,9 @@ load_dotenv()
 TRAIN_STREAM = "stream:train"
 TRAIN_WORKER_GROUP = "train-workers"
 MAX_ATTEMPTS = 2  # 처음 1번 + 재시도 1번 (학습은 비싸서 1번만)
+# 학습은 몇 분 걸리므로 30초마다 살아 있다고 알리고, 2분 넘게 소식 없는 학습은 죽은 것으로 보고 다른 워커가 가져간다 (#48)
+RECLAIM_IDLE_MS = 120_000
+HEARTBEAT_SECONDS = 30
 
 
 def run_train_job(job):
@@ -42,7 +45,8 @@ def run_train_job(job):
 
 
 def create_train_worker(redis_client, worker_number=1):
-    return JobWorker(redis_client, TRAIN_STREAM, TRAIN_WORKER_GROUP, MAX_ATTEMPTS, run_train_job, worker_number)
+    return JobWorker(redis_client, TRAIN_STREAM, TRAIN_WORKER_GROUP, MAX_ATTEMPTS, run_train_job, worker_number,
+                     reclaim_idle_ms=RECLAIM_IDLE_MS, heartbeat_seconds=HEARTBEAT_SECONDS)
 
 
 if __name__ == "__main__":
