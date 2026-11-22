@@ -27,6 +27,8 @@ def test_redis(monkeypatch):
 
 
 @pytest.fixture
-def api(test_redis):
+def api(test_redis, monkeypatch):
+    # .env에 APP_KEY가 있어도 테스트에서는 앱 키 검사를 끈다 (#115). 검사를 시험하는 테스트는 직접 켠다
+    monkeypatch.setattr(main, "APP_KEY", None)
     with TestClient(main.app) as client:  # with 안에서 startup이 돌아 Redis에 연결한다
         yield client
