@@ -1,4 +1,4 @@
-package com.cookandroid.joljag_v1_0;
+package com.log.reflecxity;
 
 import org.junit.Test;
 

@@ -1,4 +1,4 @@
-package com.cookandroid.joljag_v1_0;
+package com.log.reflecxity;
 
 import android.content.Context;
 import android.view.LayoutInflater;

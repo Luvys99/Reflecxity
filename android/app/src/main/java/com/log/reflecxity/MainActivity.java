@@ -1,4 +1,4 @@
-package com.cookandroid.joljag_v1_0;
+package com.log.reflecxity;
 
 import android.Manifest;
 import android.content.*;
@@ -25,7 +25,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.cookandroid.joljag_v1_0.utils.*;
+import com.log.reflecxity.utils.*;
 import com.google.android.material.snackbar.Snackbar;
 
 import okhttp3.FormBody;
