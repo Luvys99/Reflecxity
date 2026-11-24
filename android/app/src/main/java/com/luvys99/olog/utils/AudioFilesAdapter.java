@@ -1,4 +1,4 @@
-package com.cookandroid.joljag_v1_0.utils;
+package com.luvys99.olog.utils;
 
 import android.media.MediaPlayer;
 import android.util.Log;
@@ -12,7 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.cookandroid.joljag_v1_0.R;
+import com.luvys99.olog.R;
 
 import java.io.File;
 import java.io.IOException;

@@ -6,11 +6,11 @@ Properties properties = new Properties()
 properties.load(project.rootProject.file('local.properties').newDataInputStream())
 
 android {
-    namespace 'com.cookandroid.joljag_v1_0'
+    namespace 'com.luvys99.olog'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.cookandroid.joljag_v1_0"
+        applicationId "com.luvys99.olog"
         minSdk 21
         targetSdk 34
         versionCode 1

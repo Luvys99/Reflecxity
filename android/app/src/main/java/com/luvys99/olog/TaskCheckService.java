@@ -1,4 +1,4 @@
-package com.cookandroid.joljag_v1_0;
+package com.luvys99.olog;
 
 import android.app.Notification;
 import android.app.NotificationChannel;

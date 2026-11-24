@@ -1,4 +1,4 @@
-package com.cookandroid.joljag_v1_0;
+package com.luvys99.olog;
 
 import android.content.Context;
 
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
     public void useAppContext() {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("com.cookandroid.joljag_v1_0", appContext.getPackageName());
+        assertEquals("com.luvys99.olog", appContext.getPackageName());
     }
 }
