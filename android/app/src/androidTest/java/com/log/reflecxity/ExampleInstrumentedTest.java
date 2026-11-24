@@ -1,4 +1,4 @@
-package com.luvys99.olog;
+package com.log.reflecxity;
 
 import android.content.Context;
 
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
     public void useAppContext() {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        assertEquals("com.luvys99.olog", appContext.getPackageName());
+        assertEquals("com.log.reflecxity", appContext.getPackageName());
     }
 }

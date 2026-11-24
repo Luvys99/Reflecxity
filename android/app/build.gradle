@@ -6,11 +6,11 @@ Properties properties = new Properties()
 properties.load(project.rootProject.file('local.properties').newDataInputStream())
 
 android {
-    namespace 'com.luvys99.olog'
+    namespace 'com.log.reflecxity'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.luvys99.olog"
+        applicationId "com.log.reflecxity"
         minSdk 21
         targetSdk 34
         versionCode 1

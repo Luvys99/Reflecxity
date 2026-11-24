@@ -1,4 +1,4 @@
-package com.luvys99.olog;
+package com.log.reflecxity;
 
 import android.Manifest;
 import android.content.DialogInterface;
@@ -33,7 +33,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.luvys99.olog.utils.AudioFilesAdapter;
+import com.log.reflecxity.utils.AudioFilesAdapter;
 import com.google.android.material.snackbar.Snackbar;
 
 import org.json.JSONObject;

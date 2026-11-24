@@ -1,4 +1,4 @@
-package com.luvys99.olog;
+package com.log.reflecxity;
 
 import android.content.DialogInterface;
 import android.content.Intent;

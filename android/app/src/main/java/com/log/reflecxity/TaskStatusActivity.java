@@ -1,4 +1,4 @@
-package com.luvys99.olog;
+package com.log.reflecxity;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
